@@ -1,8 +1,0 @@
-{
-  "mcpServers": {
-    // "workshop-docs": {
-    //   "command": "node",
-    //   "args": ["tools/workshop-mcp.mjs"]
-    // }
-  }
-}
