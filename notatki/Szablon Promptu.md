@@ -18,11 +18,11 @@ Przeanalizuj wybrany przepływ w aplikacji.
 - Jaką akcje wykonuje użytkownik
 - Powtórz dla każdego kroku aż user osiągnie cel
 
-- Wyświetl podsumowanie i zapytaj użytkownika czy chce zapisać plik
+- Wyświetl podsumowanie i zapytaj użytkownika czy chce zapisać całość do pliku!
 
 ## Zasady:
-- Ekran może się ładować chwilę, jeśli jeszcze nie ma danych poczekaj i spóbuj ponownie za chwilę
-- Domyślna lokalizacja pliku z flow to ./notatki/<data>-<nazwa-flow>.md
+- Jeśli widzisz komunikat Brak danych to spróbuj ponownie za chwilę (2sek) aż dane się załadują (np. Koszyk pusty)
+- Domyślna lokalizacja pliku  z flow do potwierdzenia przez usera to ./notatki/<data>-<nazwa-flow>.md
 - Jeśli diagram ma > 4 kroki, rozbij na kilka mnniejszych diagramów poziomych, jeden po drugim
 
 
