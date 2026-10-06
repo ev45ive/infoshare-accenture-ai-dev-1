@@ -1029,3 +1029,502 @@ Plik: `notatki/2026-10-05-guest-to-user-cart-flow-analysis.md`
 | 4️⃣ Koszyk po logowaniu | Donica nadal tam! | ✅ **PASS** |
 
 🎯 **Wniosek:** System **prawidłowo synchronizuje koszyk** między sesją gościa a profilem zalogowanym!
+
+---
+
+_**User (2026-10-06 07:26:36Z)**_
+
+/create-prompt analizuj-user-flow
+
+- zapytaj od początek ścieżki, końcowy stan, opcjonalnie kroki 
+
+---
+
+_**Agent (anthropic/Anthropic/claude-haiku-4-5-20251001)**_
+
+<tool-use data-tool-type="generic" data-tool-name="vscode_askQuestions"><details>
+<summary>Tool use: **vscode_askQuestions**</summary>
+
+Analyzing your answers...
+
+**Input:**
+
+- questions:
+
+```
+[
+  {
+    "header": "prompt_scope",
+    "options": [
+      {
+        "description": "dostępny w całym projekcie ShopEasy",
+        "label": "Workspace-scoped",
+        "recommended": true
+      },
+      {
+        "description": "dostępny we wszystkich workspace'ach",
+        "label": "Personal"
+      }
+    ],
+    "question": "Czy ten prompt ma być workspace-scoped (./prompts/analizuj-user-flow.md) czy personal (user memory)?"
+  },
+  {
+    "allowFreeformInput": true,
+    "header": "prompt_args",
+    "message": "np. `{FLOW_NAME}`, `{START_STATE}`, `{END_STATE}`, `{OPTIONAL_STEPS}`",
+    "question": "Jakie argumenty powinien przyjmować prompt?"
+  },
+  {
+    "header": "prompt_output",
+    "options": [
+      {
+        "label": "Markdown (jak ostatnia analiza)",
+        "recommended": true
+      },
+      {
+        "label": "Mermaid diagram"
+      },
+      {
+        "label": "JSON"
+      },
+      {
+        "label": "Inny"
+      }
+    ],
+    "question": "Jaki powinien być format wyjścia?"
+  },
+  {
+    "header": "auto_save",
+    "options": [
+      {
+        "label": "Tak",
+        "recommended": true
+      },
+      {
+        "label": "Nie, tylko wyświetlać"
+      }
+    ],
+    "question": "Czy prompt powinien automatycznie zapisywać wyniki do ./notatki/ z datą?"
+  }
+]
+```
+
+
+**Result:**
+
+```
+{"answers":{"prompt_scope":{"selected":["Workspace-scoped"],"freeText":null,"skipped":false},"prompt_args":{"selected":[],"freeText":"","skipped":false},"prompt_output":{"selected":["Markdown (jak ostatnia analiza)"],"freeText":null,"skipped":false},"auto_save":{"selected":[],"freeText":"jak wyżej powinien zaproponować zapis z domyślną ścieżką i user akceptuje lub nie","skipped":false}}}
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-haiku-4-5-20251001)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read skill `agent-customization`
+
+**Input:**
+
+- endLine: `150`
+- filePath: `c:\Program Files\Microsoft VS Code\07f806f999\resources\app\extensions\copilot\assets\prompts\skills\agent-customization\SKILL.md`
+- startLine: `1`
+
+**Result:**
+
+```
+---
+name: agent-customization
+user-invocable: false # don't show as slash command, we have sepcialized create-agent, create-instructions, create-hook prompts for that
+description: '**WORKFLOW SKILL** — Create, update, review, fix, or debug VS Code agent customization files (.instructions.md, .prompt.md, .agent.md, SKILL.md, copilot-instructions.md, AGENTS.md). USE FOR: saving coding preferences; troubleshooting why instructions/skills/agents are ignored or not invoked; configuring applyTo patterns; defining tool restrictions; creating custom agent modes or specialized workflows; packaging domain knowledge; fixing YAML frontmatter syntax. DO NOT USE FOR: general coding questions (use default agent); runtime debugging or error diagnosis; MCP server configuration (use MCP docs directly); VS Code extension development. INVOKES: file system tools (read/write customization files), ask-questions tool (interview user for requirements), subagents for codebase exploration. FOR SINGLE OPERATIONS: For quick YAML frontmatter fixes or creating a single file from a known pattern, edit the file directly — no skill needed.'
+---
+
+# Agent Customization
+
+## Decision Flow
+
+| Primitive | When to Use |
+|-----------|-------------|
+| agent instructions | Always-on, applies everywhere in the project |
+| File Instructions | Explicit via `applyTo` patterns, or on-demand via `description` |
+| MCP | Integrates external systems, APIs, or data |
+| Hooks | Deterministic shell commands at agent lifecycle points (block tools, auto-format, inject context) |
+| Custom Agents | Subagents for context isolation, or multi-stage workflows with tool restrictions |
+| Prompts | Single focused task with parameterized inputs |
+| Skills | On-demand workflow with bundled assets (scripts/templates) |
+
+## Quick Reference
+
+Consult the reference docs for templates, domain examples, advanced frontmatter options, asset organization, anti-patterns, and creation checklists. If the references are not enough, load the offici
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-haiku-4-5-20251001)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read skill `agent-customization`: `prompts.md`
+
+**Input:**
+
+- endLine: `200`
+- filePath: `c:\Program Files\Microsoft VS Code\07f806f999\resources\app\extensions\copilot\assets\prompts\skills\agent-customization\references\prompts.md`
+- startLine: `1`
+
+**Result:**
+
+````
+# [Prompts (.prompt.md)](https://code.visualstudio.com/docs/copilot/customization/prompt-files)
+
+Reusable task templates triggered on-demand in chat. Single focused task with parameterized inputs.
+
+## Locations
+
+| Path | Scope |
+|------|-------|
+| `.github/prompts/*.prompt.md` | Workspace |
+| `<profile>/prompts/*.prompt.md` | User profile |
+
+## Frontmatter
+
+```yaml
+---
+description: "<recommended>" # Optional, but improves discoverability
+name: "Prompt Name"          # Optional, defaults to filename
+argument-hint: "Task..."     # Optional: hint shown in chat input
+agent: "agent"               # Optional: ask, agent, plan, or custom agent
+model: "GPT-5 (copilot)"     # Optional: selected model, or fallback array
+tools: [search, web]    # Optional: built-in, tool sets, MCP (<server>/*), extension
+---
+```
+
+Model fallback is supported:
+
+```yaml
+model: ['GPT-5 (copilot)', 'Claude Sonnet 4.5 (copilot)']
+```
+
+## Template
+
+```markdown
+---
+description: "Generate test cases for selected code"
+agent: "agent"
+---
+Generate comprehensive test cases for the provided code:
+- Include edge cases and error scenarios
+- Follow existing test patterns in the codebase
+- Use descriptive test names
+```
+
+**Context references**: Use Markdown links for files (`[config](./config.json)`) and `#tool:<name>` for tools.
+
+## Invocation
+
+- **Chat**: Type `/` → select from prompts and skills
+- **Command**: `Chat: Run Prompt...`
+- **Editor**: Open prompt file → play button
+
+> Both prompts and skills appear as slash commands in chat. Skills provide multi-step workflows with bundled assets; prompts are single focused tasks.
+
+**Tip**: Use `chat.promptFilesRecommendations` to show prompts as actions when starting a new chat.
+
+## Tool Priority
+
+When both prompt and custom agent define tools:
+1. Tools from prompt file
+2. Tools from referenced custom agent
+3. Default tools for selected agent
+
+## When to Use
+
+- Generate test cases for specific code
+- Create READMEs from specs
+- Summarize metrics with custom para
+… (output truncated)
+````
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-haiku-4-5-20251001)**_
+
+Perfect! Teraz utworzę prompt na podstawie Twojego workflow'u. Będzie to `.prompt.md` dla workspace'u.
+
+_**Agent (anthropic/Anthropic/claude-haiku-4-5-20251001)**_
+
+<tool-use data-tool-type="generic" data-tool-name="create_directory"><details>
+<summary>Tool use: **create_directory**</summary>
+
+Created `prompts`
+
+**Input:**
+
+- dirPath: `c:\Projects\infoshare-accenture-ai-dev-1\.github\prompts`
+
+**Result:**
+
+```
+Created directory at c:\Projects\infoshare-accenture-ai-dev-1\.github\prompts
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-haiku-4-5-20251001)**_
+
+<tool-use data-tool-type="write" data-tool-name="create_file"><details>
+<summary>Tool use: **create_file**</summary>
+
+Created `analizuj-user-flow.prompt.md`
+
+**Input:**
+
+- content:
+
+````
+---
+description: "Przeanalizuj przepływ użytkownika w ShopEasy — od kroku początkowego do końcowego stanu. Nawiguj przez UI, dokumentuj dane i interakcje, utwórz diagram Mermaid."
+name: "Analizuj User Flow"
+argument-hint: "Początkowa ścieżka (np. 'Strona główna') → Końcowy stan (np. 'Zalogowany z produktem w koszyku')"
+agent: "agent"
+---
+
+## Rola
+Fullstack Developer / Tech Lead analizujący przepływ użytkownika w aplikacji ShopEasy.
+
+## Cel
+Przeanalizuj wybrany przepływ użytkownika (user flow) od stanu początkowego do końcowego.
+
+## Instrukcje
+
+### 1. Zbierz parametry od użytkownika
+Poproś o:
+- **Ścieżka początkowa**: Gdzie użytkownik zaczyna? (np. "Strona główna jako gość", "Strona logowania", "Koszyk")
+- **Końcowy stan**: Jaki jest cel? (np. "Zalogowany użytkownik", "Produkt dodany do koszyka", "Zamówienie złożone")
+- **Opcjonalnie — kroki pośrednie**: Czy są konkretne kroki, które chcesz sprawdzić? (np. "logowanie → dodanie produktu → checkout")
+
+### 2. Przejdź przez przepływ w przeglądarce
+- Uruchom aplikację: http://127.0.0.1:3100
+- Nawiguj zgodnie z opisanym przepływem
+- Na każdym kroku zanotuj:
+  - URL i widoczne elementy
+  - Dane wyświetlane na ekranie (produkty, ceny, komunikaty)
+  - Akcje wykonane przez użytkownika (klik, wpisanie tekstu, submit)
+
+### 3. Dokumentuj przepływ w Markdown
+Użyj szablonu z `./notatki/Szablon Promptu.md`:
+
+```
+# Analiza flow — [NAZWA PRZEPŁYWU]
+
+**Rola:** [Role użytkownika]
+
+## Preconditions:
+- [Stan aplikacji na start]
+
+## Kroki:
+1. [Użytkownik robi X]
+   - Widoczne dane: ...
+   - Rezultat: ...
+
+[... więcej kroków ...]
+
+## Postconditions:
+- [Efekt końcowy]
+
+## Diagram
+
+[ diagram mermaid ]
+
+## Założenia:
+- ...
+
+## Otwarte kwestie:
+- ...
+```
+
+### 4. Utwórz diagram Mermaid
+- Jeśli przepływ ma > 4 kroki, rozbij na kilka mniejszych diagramów
+- Użyj `graph LR` (lewo-prawo) dla jasności
+- Zaznacz warunki i decyzje
+
+### 5. Zaproponuj zapis
+- Zasugeruj domyślną ścieżkę: `./notatki/RRRR-MM-DD-<nazwa-flow>.md`
+- Pytaj użytkownika, czy chce zapisać
+- Jeśli tak → zapisz plik
+
+### 6. Podsumowanie
+Wyświetl tabelę:
+| Etap | Rezultat | Status |
+|------|----------|--------|
+| [krok 1] | [rezultat] | ✅/❌ |
+| [krok 2] | [rezultat] | ✅/❌ |
+
+---
+
+## Zasady
+
+- **Jeśli dane się nie załadowały**: Spróbuj ponownie za 2 sekundy (np. "Koszyk pusty" → reload)
+- **Nieoczekiwane błędy**: Zaznacz jako `❌` w podsumowaniu i dodaj do "Otwarte kwestie"
+- **Konto testowe**: `test@shopeasy.pl` / `Test1234!`
+- **Baza danych**: Reset poprzez `npm run workshop:reset`
+
+## Koniec
+Pytaj: *"Czy chcesz zapisać tę analizę do pliku?"*
+
+````
+
+- filePath: `c:\Projects\infoshare-accenture-ai-dev-1\.github\prompts\analizuj-user-flow.prompt.md`
+
+**Result:**
+
+```
+The following files were successfully edited:
+c:\Projects\infoshare-accenture-ai-dev-1\.github\prompts\analizuj-user-flow.prompt.md
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-haiku-4-5-20251001)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **analizuj-user-flow.prompt.md**</summary>
+
+@@ lines 1-1 @@
+
+````
+---
+description: "Przeanalizuj przepływ użytkownika w ShopEasy — od kroku początkowego do końcowego stanu. Nawiguj przez UI, dokumentuj dane i interakcje, utwórz diagram Mermaid."
+name: "Analizuj User Flow"
+argument-hint: "Początkowa ścieżka (np. 'Strona główna') → Końcowy stan (np. 'Zalogowany z produktem w koszyku')"
+agent: "agent"
+---
+
+## Rola
+Fullstack Developer / Tech Lead analizujący przepływ użytkownika w aplikacji ShopEasy.
+
+## Cel
+Przeanalizuj wybrany przepływ użytkownika (user flow) od stanu początkowego do końcowego.
+
+## Instrukcje
+
+### 1. Zbierz parametry od użytkownika
+Poproś o:
+- **Ścieżka początkowa**: Gdzie użytkownik zaczyna? (np. "Strona główna jako gość", "Strona logowania", "Koszyk")
+- **Końcowy stan**: Jaki jest cel? (np. "Zalogowany użytkownik", "Produkt dodany do koszyka", "Zamówienie złożone")
+- **Opcjonalnie — kroki pośrednie**: Czy są konkretne kroki, które chcesz sprawdzić? (np. "logowanie → dodanie produktu → checkout")
+
+### 2. Przejdź przez przepływ w przeglądarce
+- Uruchom aplikację: http://127.0.0.1:3100
+- Nawiguj zgodnie z opisanym przepływem
+- Na każdym kroku zanotuj:
+  - URL i widoczne elementy
+  - Dane wyświetlane na ekranie (produkty, ceny, komunikaty)
+  - Akcje wykonane przez użytkownika (klik, wpisanie tekstu, submit)
+
+### 3. Dokumentuj przepływ w Markdown
+Użyj szablonu z `./notatki/Szablon Promptu.md`:
+
+```
+# Analiza flow — [NAZWA PRZEPŁYWU]
+
+**Rola:** [Role użytkownika]
+
+## Preconditions:
+- [Stan aplikacji na start]
+
+## Kroki:
+1. [Użytkownik robi X]
+   - Widoczne dane: ...
+   - Rezultat: ...
+
+[... więcej kroków ...]
+
+## Postconditions:
+- [Efekt końcowy]
+
+## Diagram
+
+[ diagram mermaid ]
+
+## Założenia:
+- ...
+
+## Otwarte kwestie:
+- ...
+```
+
+### 4. Utwórz diagram Mermaid
+- Jeśli przepływ ma > 4 kroki, rozbij na kilka mniejszych diagramów
+- Użyj `graph LR` (lewo-prawo) dla jasności
+- Zaznacz warunki i decyzje
+
+### 5. Zaproponuj zapis
+- Zasugeruj domyślną ścieżkę: `./notatki/RRRR-MM-DD-<nazwa-flow>.md`
+- Pytaj użytkownika, czy chce zapisać
+- Jeśli tak → zapisz plik
+
+### 6. Podsumowanie
+Wyświetl tabelę:
+| Etap | Rezultat | Status |
+|------|----------|--------|
+| [krok 1] | [rezultat] | ✅/❌ |
+| [krok 2] | [rezultat] | ✅/❌ |
+
+---
+
+## Zasady
+
+- **Jeśli dane się nie załadowały**: Spróbuj ponownie za 2 sekundy (np. "Koszyk pusty" → reload)
+- **Nieoczekiwane błędy**: Zaznacz jako `❌` w podsumowaniu i dodaj do "Otwarte kwestie"
+- **Konto testowe**: `test@shopeasy.pl` / `Test1234!`
+- **Baza danych**: Reset poprzez `npm run workshop:reset`
+
+## Koniec
+Pytaj: *"Czy chcesz zapisać tę analizę do pliku?"*
+
+````
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-haiku-4-5-20251001)**_
+
+✅ **Prompt utworzony!**
+
+Lokalizacja: `.github/prompts/analizuj-user-flow.prompt.md`
+
+---
+
+## 📋 Co robi ten prompt?
+
+Reusable szablona do analizy przepływów użytkownika w ShopEasy:
+
+1. **Pytanie** o ścieżkę początkową i końcowy stan
+2. **Nawigacja** przez UI z dokumentacją każdego kroku
+3. **Markdown** z preconditions, krokami, postconditions
+4. **Mermaid diagram** do wizualizacji
+5. **Zapis** do `./notatki/<data>-<nazwa>.md`
+
+---
+
+## 🚀 Jak używać
+
+**W chacie:** Wpisz `/` i wybierz **"Analizuj User Flow"**
+
+**Lub:** `Chat: Run Prompt...` → `analizuj-user-flow`
+
+---
+
+## 💡 Przykładowe invocations
+
+- *"Strona główna → Koszyk (jako gość)"*
+- *"Login → Account Profile (zalogowany user)"*
+- *"Checkout → Potwierdzenie zamówienia"*
+
+---
+
+## 🔄 Co może być dalej?
+
+Jeśli chcesz, mogę stworzyć:
+- **Skill** — wrapper z automatycznym resetem bazy (`npm run workshop:reset`)
+- **Instrukcje** — guidelines do `./app/**/*.tsx` dla standaryzacji flow'ów
+- **Custom Agent** — z tool restrictions do testu bez zalogowania vs. zalogowany user
+
+Czego byś chciał?
