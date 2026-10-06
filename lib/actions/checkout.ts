@@ -8,7 +8,7 @@ import { AddressSchema } from '@/lib/validations/checkout'
 import { formatPrice } from '@/lib/products'
 import type { PaymentMethod } from '@prisma/client'
 import type { DeliveryMethod } from '@/lib/constants/checkout'
-import { DELIVERY_OPTIONS } from '@/lib/constants/checkout'
+import { DELIVERY_OPTIONS, calculateDeliveryCost } from '@/lib/constants/checkout'
 
 export type CreateOrderParams = {
   address: {
@@ -51,11 +51,12 @@ export async function createOrder(params: CreateOrderParams) {
     }
   }
 
+  const subtotal = cartItems.reduce((sum, i) => sum + i.product.price * i.quantity, 0)
+  const deliveryCost = calculateDeliveryCost(subtotal, params.deliveryMethod)
+  const total = subtotal + deliveryCost
+
   const deliveryOption = DELIVERY_OPTIONS.find((o) => o.id === params.deliveryMethod)
   if (!deliveryOption) return { error: 'Nieprawidłowa metoda dostawy.' }
-
-  const subtotal = cartItems.reduce((sum, i) => sum + i.product.price * i.quantity, 0)
-  const total = subtotal + deliveryOption.cost
 
   // Przetwórz płatność (mock)
   const paymentResult = await processPayment(total)
@@ -77,7 +78,7 @@ export async function createOrder(params: CreateOrderParams) {
       paymentStatus: 'PAID',
       transactionId: paymentResult.transactionId,
       deliveryMethod: params.deliveryMethod,
-      deliveryCost: deliveryOption.cost,
+      deliveryCost,
       subtotal,
       total,
       items: {
@@ -106,7 +107,7 @@ export async function createOrder(params: CreateOrderParams) {
       <p>Numer zamówienia: <strong>${order.orderNumber}</strong></p>
       <table>
         ${cartItems.map((i) => `<tr><td>${i.product.name} ×${i.quantity}</td><td>${formatPrice(i.product.price * i.quantity)}</td></tr>`).join('')}
-        <tr><td><em>Dostawa (${deliveryOption.label})</em></td><td>${formatPrice(deliveryOption.cost)}</td></tr>
+        <tr><td><em>Dostawa (${deliveryOption.label})</em></td><td>${deliveryCost === 0 ? 'Gratis' : formatPrice(deliveryCost)}</td></tr>
         <tr><td><strong>Razem</strong></td><td><strong>${formatPrice(total)}</strong></td></tr>
       </table>
       <p>Szacowany czas dostawy: ${params.deliveryMethod === 'COURIER' ? '1–2 dni robocze' : '2–3 dni robocze'}.</p>
