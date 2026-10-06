@@ -12,8 +12,6 @@ Chcemy zachęcić klientów do większych zakupów i zaoferować darmowego kurie
 Kamil
 ```
 
-[Kontekst zadania](A/kontekst.md).
-
 ## Zadania
 
 1. Rozpoznaj brakujące reguły i z AI przygotuj mapę wpływu.
