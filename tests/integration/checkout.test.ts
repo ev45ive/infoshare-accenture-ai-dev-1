@@ -61,3 +61,24 @@ test('zamówienie kurierem >= 300 zł zapisuje deliveryCost 0 i wysyła mail z G
   assert.equal(emails.length, 1)
   assert.match(emails[0].html, /Gratis/)
 })
+
+test('checkout z pustym koszykiem zwraca błąd, nie tworzy zamówienia ani maila', async () => {
+  const user = await db.user.findUniqueOrThrow({ where: { email: USER_EMAIL } })
+  await db.cartItem.deleteMany({ where: { userId: user.id } })
+  clearEmails()
+  const ordersBefore = await db.order.count({ where: { userId: user.id } })
+  const addressesBefore = await db.address.count({ where: { userId: user.id } })
+
+  const result = await placeOrder(
+    { id: user.id, email: user.email, name: user.name },
+    { address: ADDRESS, paymentMethod: 'CARD', deliveryMethod: 'COURIER' },
+  )
+
+  assert.ok('error' in result, 'checkout powinien zwrócić błąd')
+  assert.equal(result.error, 'Koszyk jest pusty.')
+  assert.equal(await db.order.count({ where: { userId: user.id } }), ordersBefore)
+  assert.equal(await db.address.count({ where: { userId: user.id } }), addressesBefore)
+  assert.equal(await db.cartItem.count({ where: { userId: user.id } }), 0)
+  assert.equal(getEmailsTo(USER_EMAIL).length, 0)
+})
+

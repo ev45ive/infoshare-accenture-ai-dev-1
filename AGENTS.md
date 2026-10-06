@@ -86,6 +86,16 @@ npm run test:e2e        # testy end-to-end
 
 ---
 
+## Warunkowo ładowane instrukcje
+
+| Warunek | Instrukcja do załadowania |
+|---------|---------------------------|
+| Zmiany dotyczą `tests/integration/*.test.ts` (pisanie, edycja, recenzja) | `.github/instructions/integration-tests.instructions.md` |
+
+Przed modyfikacją plików pasujących do warunku przeczytaj wskazaną instrukcję i stosuj jej zasady.
+
+---
+
 ## ⛔ Pliki poza zakresem — ABSOLUTNIE BEZWZGLĘDNIE
 
 **KATEGORIA „NIGDY":** Poniższych ścieżek **nie czytaj nigdy, nie przeszukuj, nie streszczaj i nie używaj jako źródła odpowiedzi:**
