@@ -20,3 +20,18 @@ export function calculateDeliveryCost(subtotal: number, method: DeliveryMethod):
   const option = DELIVERY_OPTIONS.find((o) => o.id === method)
   return option?.cost ?? 0
 }
+
+export type OrderTotals = {
+  subtotal: number
+  deliveryCost: number
+  total: number
+}
+
+export function calculateOrderTotals(
+  items: ReadonlyArray<{ price: number; quantity: number }>,
+  method: DeliveryMethod,
+): OrderTotals {
+  const subtotal = items.reduce((sum, i) => sum + i.price * i.quantity, 0)
+  const deliveryCost = calculateDeliveryCost(subtotal, method)
+  return { subtotal, deliveryCost, total: subtotal + deliveryCost }
+}

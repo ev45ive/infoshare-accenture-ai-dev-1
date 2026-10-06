@@ -3,3 +3,7 @@
 export function formatPrice(cents: number): string {
   return (cents / 100).toLocaleString('pl-PL', { style: 'currency', currency: 'PLN' })
 }
+
+export function formatDeliveryCost(cents: number): string {
+  return cents === 0 ? 'Gratis' : formatPrice(cents)
+}
