@@ -4204,3 +4204,4276 @@ Plik: `notatki/2026-10-06-sumowanie-produktow-multiphase-guest-cart.md`
 - ⚠️ localStorage jest REPLACED (nie merged) przy wylogowaniu
 - 📊 Baza danych scalaje produkty z obu faz automatycznie
 - ⏱️ Opóźnienie załadowania ~3-5s (UX wyzwanie)
+
+---
+
+_**User (2026-10-06 08:23:28Z)**_
+
+na podstawie kroków analizy 
+
+przejdź po kodzie źródłowym, znajdź ścieżki do kodu dla każdego kroku,
+
+dla każdego kroku wypisz istotne / dotknięte - pliki, wejściowy symbol(klasa/funkcja) lub komponent
+
+zapytaj czy zapisać jako plik analizy wg. podobnego szablonu
+
+---
+
+_**Agent (anthropic/Anthropic/claude-haiku-4-5-20251001)**_
+
+<think><details><summary>Thought Process</summary>
+Doskonale! Teraz mam pełny obraz. Przygotowuję analizę kodu dla każdego kroku.
+
+---
+
+# Analiza kodu źródłowego — Multi-phase Guest Cart Flow
+
+Na podstawie poprzedniej analizy user flow, oto mapa kodu dla każdego kroku:
+
+## Krok 1: Niezalogowany — Dodaj produkt do koszyka (12 szt.)
+
+### Komponenty i UI
+- **File**: [components/products/AddToCartButton.tsx](components/products/AddToCartButton.tsx)
+  - **Symbol**: `AddToCartButton` (komponent)
+  - **Akcja**: onClick → `handleAddToCart()`
+  - **Hook**: `useCart()` → `addItem()`
+
+- **File**: [components/layout/Header.tsx](components/layout/Header.tsx)
+  - **Symbol**: Link do `/cart`
+  - **Akcja**: Nawigacja do koszyka
+
+### State Management (Guest)
+- **File**: [store/cart.ts](store/cart.ts)
+  - **Symbol**: `useCartStore` (Zustand store)
+  - **Metoda**: `addItem()` — sumuje ilości w localStorage
+  - **Storage**: localStorage (`shopeasy-guest-cart`)
+  - **Logika**: Jeśli produkt istnieje → `quantity + item.quantity` ✅
+
+### Logika Hook'a
+- **File**: [hooks/useCart.ts](hooks/useCart.ts)
+  - **Symbol**: `useCart()` (hook)
+  - **Warunek**: `if (!isLoggedIn)` → używa `guestAdd()` z Zustand
+  - **Linijka**: ~90-110 (guest path)
+
+---
+
+## Krok 2: Zalogowanie
+
+### API Endpoint
+- **File**: [app/api/auth/login/route.ts](app/api/auth/login/route.ts)
+  - **Symbol**: `POST()` handler
+  - **Akcje**:
+    1. `LoginSchema.safeParse()` — walidacja
+    2. `db.user.findUnique()` — szuka użytkownika
+    3. `bcrypt.compare()` — weryfikuje hasło
+    4. `setSession()` — ustawia sesję
+  - **Linia**: 71 (`setSession({ id, email, name })`)
+
+### Session Management
+- **File**: [lib/session.ts](lib/session.ts) (nie czytane, ale znane)
+  - **Symbol**: `setSession()`
+  - **Akcja**: Tworzy sesję w cookie/storage
+
+### Guest Cart Merge
+- **File**: [hooks/useCart.ts](hooks/useCart.ts)
+  - **Symbol**: `useEffect()` hook (linia ~69)
+  - **Warunek**: `if (isLoggedIn)` — triggered po zalogowaniu
+  - **Akcja**: 
+    1. Pobiera `guest = useCartStore.getState().items`
+    2. Wywołuje `mergeGuestCart(guest.map(...))`
+    3. Czyści localStorage: `clearCart()`
+    4. Pobiera DB koszyk: `fetchDbCart()`
+  - **Linie**: 69-82
+
+### Server-side Merge Logic
+- **File**: [lib/actions/cart.ts](lib/actions/cart.ts)
+  - **Symbol**: `mergeGuestCart()` (server action)
+  - **Logika**:
+    - Dla każdego produktu z localStorage:
+      - Jeśli istnieje w DB: `Math.max(existing.quantity, item.quantity)` 
+      - Jeśli nie: `createNew()`
+    - BR-01: max 5 różnych produktów
+  - **Linie**: 96-123
+
+---
+
+## Krok 3: Wylogowanie + Dodanie nowych produktów
+
+### Logout Button
+- **File**: [components/layout/LogoutButton.tsx](components/layout/LogoutButton.tsx)
+  - **Symbol**: `LogoutButton()` (komponent)
+  - **Akcja**: `onClick` → `handleLogout()`
+
+### Logout Endpoint
+- **File**: [app/api/auth/logout/route.ts](app/api/auth/logout/route.ts)
+  - **Symbol**: `POST()` handler
+  - **Akcja**: `clearSession()` — usuwa sesję
+  - **Linia**: 4
+
+### Session Clear Logic
+- **File**: [lib/session.ts](lib/session.ts) (nie czytane, ale znane)
+  - **Symbol**: `clearSession()`
+  - **Efekt**: `useCart()` detektuje `isLoggedIn = false` → przełącza na guest mode
+
+### Druga faza dodawania produktów (Guest)
+- **File**: [hooks/useCart.ts](hooks/useCart.ts)
+  - **Symbol**: `useCart()` hook
+  - **Warunek**: `if (!isLoggedIn)` 
+  - **Akcja**: `guestAdd()` z Zustand
+  - **Efekt**: localStorage jest REPLACED (nie merged) — stare produkty znikają 📝
+
+- **File**: [store/cart.ts](store/cart.ts)
+  - **Symbol**: `addItem()` 
+  - **Logika**: Nowe produkty są dodane, ale stare z localStorage są wyczyszczone w kroku 2
+  - **Storage**: localStorage (`shopeasy-guest-cart`)
+
+---
+
+## Krok 4: Zalogowanie (ponownie) — Sumowanie ilości
+
+### Login + Merge (tak jak Krok 2)
+- **File**: [app/api/auth/login/route.ts](app/api/auth/login/route.ts) → `setSession()`
+- **File**: [hooks/useCart.ts](hooks/useCart.ts) → `mergeGuestCart()` callback
+- **File**: [lib/actions/cart.ts](lib/actions/cart.ts) → `mergeGuestCart()` server action
+
+### Kluczowa różnica:
+- **Baza danych** zawiera: Donica x4, Ekspres x3, Mysz x5 (z Fazy 1)
+- **localStorage** zawiera: Kurtka x2, Słuchawki x3 (z Fazy 3)
+- **Merge**: Produkty z localStorage są dodane do bazy → **RAZEM 17 szt.** ✅
+
+---
+
+## Podsumowanie — Mapa Symboli
+
+| Krok | Plik | Symbol | Typ | Akcja |
+|------|------|--------|-----|-------|
+| 1 | `components/products/AddToCartButton.tsx` | `AddToCartButton` | Komponent | Dodaj do koszyka (guest) |
+| 1 | `store/cart.ts` | `useCartStore` | Zustand Store | localStorage + sumowanie |
+| 1 | `hooks/useCart.ts` | `useCart()` | Hook | Abstraktuje gość/zalogowany |
+| 2 | `app/api/auth/login/route.ts` | `POST()` | API Handler | Logowanie + `setSession()` |
+| 2 | `hooks/useCart.ts` | `useEffect()` (isLoggedIn) | Hook Effect | Trigger merge |
+| 2 | `lib/actions/cart.ts` | `mergeGuestCart()` | Server Action | Scalaj localStorage → DB |
+| 3 | `components/layout/LogoutButton.tsx` | `LogoutButton` | Komponent | Wyloguj |
+| 3 | `app/api/auth/logout/route.ts` | `POST()` | API Handler | Logout + `clearSession()` |
+| 3 | `store/cart.ts` | `addItem()` | Zustand Method | Nowe produkty (localStorage replaced) |
+| 4 | (wszystkie jak krok 2) | | | Ponowne logowanie + merge |
+
+---
+
+## Funkcje Kluczowe
+
+```
+addToDbCart()           [lib/actions/cart.ts:25]  — Dodaj do DB (zalogowany)
+removeFromDbCart()      [lib/actions/cart.ts:63]  — Usuń z DB
+updateDbCartQuantity()  [lib/actions/cart.ts:73]  — Update ilości w DB
+getDbCart()             [lib/actions/cart.ts:12]  — Pobierz DB koszyk
+mergeGuestCart()        [lib/actions/cart.ts:96]  — Scalaj gość → zalogowany ⭐
+setSession()            [lib/session.ts]          — Ustawij sesję (login)
+clearSession()          [lib/session.ts]          — Usuń sesję (logout)
+useCart()               [hooks/useCart.ts:22]     — Main hook — abstraktuje logikę
+useCartStore            [store/cart.ts:23]        — Zustand — localStorage
+```
+
+---
+
+Czy chcesz, żebym **zapisał tę mapę do pliku** w formie strukturyzowanej analizy kodu?
+</details></think>
+
+_**Agent (anthropic/Anthropic/claude-haiku-4-5-20251001)**_
+
+Przeanalizuję kod źródłowy na podstawie kroków z analizy flow. Zaczynam od przeszukania struktury projektu.
+
+_**Agent (anthropic/Anthropic/claude-haiku-4-5-20251001)**_
+
+<tool-use data-tool-type="search" data-tool-name="grep_search"><details>
+<summary>Tool use: **grep_search**</summary>
+
+Searched for regex `AddToCartButton|useCart|cart` (`**/components/**/*.tsx`), 13 results
+
+**Input:**
+
+- includePattern: `components/**/*.tsx`
+- isRegexp: `true`
+- maxResults: `20`
+- query: `AddToCartButton|useCart|cart`
+
+**Result:**
+
+```
+Found 13 matches in 5 files for "AddToCartButton|useCart|cart"
+
+components/cart/CartItem.tsx
+4:interface CartItemProps {
+17:export function CartItem({ item, onRemove, onUpdateQty, formatPrice }: CartItemProps) {
+
+components/cart/CartSummary.tsx
+4:interface CartSummaryProps {
+10:export function CartSummary({ total, count, formatPrice }: CartSummaryProps) {
+
+components/layout/Header.tsx
+19:          <Link href="/cart" className="text-gray-700 hover:text-blue-600">
+
+components/products/AddToCartButton.tsx
+5:import { useCart } from '@/hooks/useCart'
+17:interface AddToCartButtonProps {
+21:export function AddToCartButton({ product }: AddToCartButtonProps) {
+23:  const { addItem, loading, error, clearError } = useCart()
+
+components/products/ProductCard.tsx
+8:import { useCart } from '@/hooks/useCart'
+26:  const { addItem, loading, error, clearError } = useCart()
+35:  const handleAddToCart = async () => {
+92:            onClick={handleAddToCart}
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-haiku-4-5-20251001)**_
+
+<tool-use data-tool-type="search" data-tool-name="grep_search"><details>
+<summary>Tool use: **grep_search**</summary>
+
+Searched for regex `login|logout|auth|session` (`**/app/**/*.tsx`), 30 results
+
+**Input:**
+
+- includePattern: `app/**/*.tsx`
+- isRegexp: `true`
+- maxResults: `20`
+- query: `login|logout|auth|session`
+
+**Result:**
+
+```
+Found 30 matches in 9 files for "login|logout|auth|session" (showing 20 matches in 9 files)
+
+app/(auth)/login/page.tsx
+7:import { LoginSchema, type LoginInput } from '@/lib/validations/auth'
+9:function LoginForm() {
+23:  } = useForm<LoginInput>({ resolver: zodResolver(LoginSchema) })
+25:  async function onSubmit(data: LoginInput) {
+29:      const res = await fetch('/api/auth/login', {
+... (2 more matches in this file)
+
+app/(auth)/register/page.tsx
+6:import { RegisterSchema, type RegisterInput } from '@/lib/validations/auth'
+23:      const res = await fetch('/api/auth/register', {
+59:          <Link href="/login" className="block text-sm text-blue-600 hover:underline">
+... (1 more match in this file)
+
+app/(auth)/reset-password/confirm/page.tsx
+7:import { ResetPasswordConfirmSchema, type ResetPasswordConfirmInput } from '@/lib/validations/auth'
+30:      const res = await fetch('/api/auth/reset-password/confirm', {
+... (1 more match in this file)
+
+app/(auth)/reset-password/page.tsx
+6:import { ResetPasswordRequestSchema, type ResetPasswordRequestInput } from '@/lib/validations/auth'
+25:      const res = await fetch('/api/auth/reset-password', {
+... (2 more matches in this file)
+
+app/(shop)/account/layout.tsx
+2:import { getSessionUser } from '@/lib/session'
+6:  const user = await getSessionUser()
+... (1 more match in this file)
+
+app/(shop)/account/profile/page.tsx
+1:import { getSessionUser } from '@/lib/session'
+5:  const user = await getSessionUser()
+... (1 more match in this file)
+
+app/(shop)/checkout/delivery/page.tsx
+40:    sessionStorage.setItem(
+
+app/(shop)/checkout/payment/page.tsx
+21:function getDeliverySnapshot() { return sessionStorage.getItem('checkout_delivery') }
+47:      sessionStorage.removeItem('checkout_delivery')
+... (2 more matches in this file)
+
+app/workshop/reset/page.tsx
+14:    sessionStorage.removeItem('checkout_delivery')
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-haiku-4-5-20251001)**_
+
+<tool-use data-tool-type="search" data-tool-name="grep_search"><details>
+<summary>Tool use: **grep_search**</summary>
+
+Searched for regex `export.*useCart|export.*function useCart` (`**/hooks/**/*.ts`), 1 result
+
+**Input:**
+
+- includePattern: `hooks/**/*.ts`
+- isRegexp: `true`
+- query: `export.*useCart|export.*function useCart`
+
+**Result:**
+
+```
+Found 1 match in 1 file for "export.*useCart|export.*function useCart"
+
+hooks/useCart.ts
+22:export function useCart() {
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-haiku-4-5-20251001)**_
+
+<tool-use data-tool-type="search" data-tool-name="grep_search"><details>
+<summary>Tool use: **grep_search**</summary>
+
+Searched for regex `cart|cartStore|useCartStore` (`**/store/**/*.ts`), 8 results
+
+**Input:**
+
+- includePattern: `store/**/*.ts`
+- isRegexp: `true`
+- query: `cart|cartStore|useCartStore`
+
+**Result:**
+
+```
+Found 8 matches in 1 file for "cart|cartStore|useCartStore"
+
+store/cart.ts
+6:export interface CartItem {
+14:interface CartState {
+15:  items: CartItem[]
+16:  addItem: (item: CartItem) => void
+19:  clearCart: () => void
+23:export const useCartStore = create<CartState>()(
+53:      clearCart: () => set({ items: [] }),
+59:      name: 'shopeasy-guest-cart',
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-haiku-4-5-20251001)**_
+
+<tool-use data-tool-type="search" data-tool-name="grep_search"><details>
+<summary>Tool use: **grep_search**</summary>
+
+Searched for regex `addToCart|createSession|mergeCart|guestCart` (`**/lib/**/*.ts`), 1 result
+
+**Input:**
+
+- includePattern: `lib/**/*.ts`
+- isRegexp: `true`
+- maxResults: `20`
+- query: `addToCart|createSession|mergeCart|guestCart`
+
+**Result:**
+
+```
+Found 1 match in 1 file for "addToCart|createSession|mergeCart|guestCart"
+
+lib/actions/cart.ts
+96:export async function mergeGuestCart(items: CartCookieItem[]) {
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-haiku-4-5-20251001)**_
+
+<tool-use data-tool-type="search" data-tool-name="file_search"><details>
+<summary>Tool use: **file_search**</summary>
+
+Searched for files matching `**/app/api/**/*.ts`, 9 matches
+
+**Input:**
+
+- maxResults: `30`
+- query: `app/api/**/*.ts`
+
+**Result:**
+
+```
+9 total results
+c:\Projects\infoshare-accenture-ai-dev-1\app\api\cart\route.ts
+c:\Projects\infoshare-accenture-ai-dev-1\app\api\auth\register\route.ts
+c:\Projects\infoshare-accenture-ai-dev-1\app\api\auth\logout\route.ts
+c:\Projects\infoshare-accenture-ai-dev-1\app\api\auth\reset-password\route.ts
+c:\Projects\infoshare-accenture-ai-dev-1\app\api\auth\session\route.ts
+c:\Projects\infoshare-accenture-ai-dev-1\app\api\workshop\browser-reset\route.ts
+c:\Projects\infoshare-accenture-ai-dev-1\app\api\auth\login\route.ts
+c:\Projects\infoshare-accenture-ai-dev-1\app\api\auth\reset-password\confirm\route.ts
+c:\Projects\infoshare-accenture-ai-dev-1\app\api\auth\verify\route.ts
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-haiku-4-5-20251001)**_
+
+Teraz przeczytam kluczowe pliki aby zmapować kroki.
+
+_**Agent (anthropic/Anthropic/claude-haiku-4-5-20251001)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `useCart.ts`, lines 1 to 60
+
+**Input:**
+
+- endLine: `60`
+- filePath: `c:\Projects\infoshare-accenture-ai-dev-1\hooks\useCart.ts`
+- startLine: `1`
+
+**Result:**
+
+```
+'use client'
+import { useState, useEffect, useCallback } from 'react'
+import { useCartStore } from '@/store/cart'
+import {
+  addToDbCart,
+  removeFromDbCart,
+  updateDbCartQuantity,
+  clearDbCart,
+  mergeGuestCart,
+} from '@/lib/actions/cart'
+import { formatPrice } from '@/lib/format'
+
+// Kształt pozycji koszyka — wspólny dla gościa i zalogowanego
+export type CartLineItem = {
+  productId: string
+  name: string
+  price: number       // grosze
+  quantity: number
+  imageUrl: string
+}
+
+export function useCart() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [dbItems, setDbItems] = useState<CartLineItem[]>([])
+  const [loadingDb, setLoadingDb] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  // Zustand (gość)
+  const guestItems = useCartStore((s) => s.items)
+  const guestAdd = useCartStore((s) => s.addItem)
+  const guestRemove = useCartStore((s) => s.removeItem)
+  const guestUpdate = useCartStore((s) => s.updateQuantity)
+  const guestClear = useCartStore((s) => s.clearCart)
+
+  // Hydrate guest cart po mount (skipHydration: true w store)
+  useEffect(() => {
+    useCartStore.persist.rehydrate()
+    let active = true
+    fetch('/api/auth/session', { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((session) => { if (active) setIsLoggedIn(!!session.user) })
+      .catch(() => { if (active) setError('Nie udało się sprawdzić sesji. Odśwież stronę.') })
+    return () => { active = false }
+  }, [])
+
+  // Pobierz DB koszyk dla zalogowanego
+  const fetchDbCart = useCallback(async () => {
+    setLoadingDb(true)
+    try {
+      const res = await fetch('/api/cart')
+      if (!res.ok) throw new Error('Nie udało się pobrać koszyka.')
+      const rows = await res.json()
+      setDbItems(
+        rows.map((r: { productId: string; product: { name: string; price: number; imageUrl: string }; quantity: number }) => ({
+          productId: r.productId,
+          name: r.produ
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-haiku-4-5-20251001)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `route.ts`, lines 1 to 80
+
+**Input:**
+
+- endLine: `80`
+- filePath: `c:\Projects\infoshare-accenture-ai-dev-1\app\api\auth\login\route.ts`
+- startLine: `1`
+
+**Result:**
+
+```
+import { NextRequest, NextResponse } from 'next/server'
+import bcrypt from 'bcryptjs'
+import { db } from '@/lib/db'
+import { setSession } from '@/lib/session'
+import { LoginSchema } from '@/lib/validations/auth'
+
+export async function POST(req: NextRequest) {
+  const body = await req.json().catch(() => null)
+  if (!body) return NextResponse.json({ error: 'Nieprawidłowy JSON.' }, { status: 400 })
+
+  const parsed = LoginSchema.safeParse(body)
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'Nieprawidłowe dane logowania.' }, { status: 400 })
+  }
+
+  const { email, password } = parsed.data
+
+  const user = await db.user.findUnique({ where: { email } })
+
+  // Generic error — nie ujawniamy czy email istnieje (security)
+  const INVALID_MSG = 'Nieprawidłowy e-mail lub hasło.'
+
+  if (!user) {
+    return NextResponse.json({ error: INVALID_MSG }, { status: 401 })
+  }
+
+  // BR-05: blokada konta
+  if (user.lockedUntil && user.lockedUntil > new Date()) {
+    const minutesLeft = Math.ceil((user.lockedUntil.getTime() - Date.now()) / 60_000)
+    return NextResponse.json(
+      { error: `Konto tymczasowo zablokowane. Spróbuj ponownie za ${minutesLeft} min.` },
+      { status: 423 }
+    )
+  }
+
+  // REG-03: wymaga aktywacji e-mail
+  if (!user.emailVerified) {
+    return NextResponse.json(
+      { error: 'Konto nie zostało aktywowane. Sprawdź skrzynkę e-mail i kliknij link weryfikacyjny.' },
+      { status: 403 }
+    )
+  }
+
+  const passwordOk = await bcrypt.compare(password, user.passwordHash)
+
+  if (!passwordOk) {
+    const attempts = user.failedLoginAttempts + 1
+    const shouldLock = attempts >= 5
+    await db.user.update({
+      where: { id: user.id },
+      data: {
+        failedLoginAttempts: attempts,
+        lockedUntil: shouldLock ? new Date(Date.now() + 15 * 60_000) : null,
+      },
+    })
+
+    if (shouldLock) {
+      return NextResponse.json(
+        { error: 'Konto zablokowane na 15 minut z powodu zbyt wi
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-haiku-4-5-20251001)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `route.ts`
+
+**Input:**
+
+- endLine: `30`
+- filePath: `c:\Projects\infoshare-accenture-ai-dev-1\app\api\auth\logout\route.ts`
+- startLine: `1`
+
+**Result:**
+
+```
+import { NextResponse } from 'next/server'
+import { clearSession } from '@/lib/session'
+
+export async function POST() {
+  await clearSession()
+  return NextResponse.json({ success: true })
+}
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-haiku-4-5-20251001)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `cart.ts`, lines 80 to 123
+
+**Input:**
+
+- endLine: `150`
+- filePath: `c:\Projects\infoshare-accenture-ai-dev-1\lib\actions\cart.ts`
+- startLine: `80`
+
+**Result:**
+
+```
+    data: { quantity },
+  })
+  revalidatePath('/cart')
+  return { success: true }
+}
+
+export async function clearDbCart() {
+  const user = await getSessionUser()
+  if (!user) return { error: 'Niezalogowany.' }
+
+  await db.cartItem.deleteMany({ where: { userId: user.id } })
+  revalidatePath('/cart')
+  return { success: true }
+}
+
+// KOS-02: merge koszyka gościa po zalogowaniu
+export async function mergeGuestCart(items: CartCookieItem[]) {
+  const user = await getSessionUser()
+  if (!user || items.length === 0) return { success: true }
+
+  for (const item of items) {
+    const existing = await db.cartItem.findUnique({
+      where: { userId_productId: { userId: user.id, productId: item.productId } },
+    })
+
+    if (existing) {
+      await db.cartItem.update({
+        where: { id: existing.id },
+        data: { quantity: Math.max(existing.quantity, item.quantity) },
+      })
+    } else {
+      const count = await db.cartItem.count({ where: { userId: user.id } })
+      if (count >= CART_LIMIT) break // BR-01: cicha blokada
+
+      await db.cartItem.create({
+        data: { userId: user.id, productId: item.productId, quantity: item.quantity },
+      }).catch(() => null) // ignoruj nieistniejące produkty
+    }
+  }
+
+  revalidatePath('/cart')
+  return { success: true }
+}
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-haiku-4-5-20251001)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `cart.ts`, lines 1 to 80
+
+**Input:**
+
+- endLine: `80`
+- filePath: `c:\Projects\infoshare-accenture-ai-dev-1\lib\actions\cart.ts`
+- startLine: `1`
+
+**Result:**
+
+```
+'use server'
+import { revalidatePath } from 'next/cache'
+import { db } from '@/lib/db'
+import { getSessionUser } from '@/lib/session'
+import type { CartCookieItem } from '@/types'
+
+const CART_LIMIT = 5 // BR-01: max 5 różnych produktów
+
+// ─── Odczyt ──────────────────────────────────────────────
+
+export async function getDbCart() {
+  const user = await getSessionUser()
+  if (!user) return []
+
+  return db.cartItem.findMany({
+    where: { userId: user.id },
+    include: { product: { include: { category: true } } },
+    orderBy: { createdAt: 'asc' },
+  })
+}
+
+// ─── Mutacje ─────────────────────────────────────────────
+
+export async function addToDbCart(productId: string, quantity = 1) {
+  const user = await getSessionUser()
+  if (!user) return { error: 'Zaloguj się, aby dodać do koszyka.' }
+
+  const product = await db.product.findUnique({ where: { id: productId } })
+  if (!product) return { error: 'Produkt nie istnieje.' }
+
+  // KAT-05: produkt niedostępny
+  if (product.stock === 0) {
+    return { error: 'Produkt jest chwilowo niedostępny.' }
+  }
+
+  // Jeśli już w koszyku — zwiększ ilość
+  const existing = await db.cartItem.findUnique({
+    where: { userId_productId: { userId: user.id, productId } },
+  })
+
+  if (existing) {
+    await db.cartItem.update({
+      where: { id: existing.id },
+      data: { quantity: existing.quantity + quantity },
+    })
+    revalidatePath('/cart')
+    return { success: true }
+  }
+
+  // BR-01: limit 5 różnych produktów
+  const count = await db.cartItem.count({ where: { userId: user.id } })
+  if (count >= CART_LIMIT) {
+    return {
+      error: `Osiągnięto limit pozycji dla konta standardowego (${CART_LIMIT}). Usuń produkt lub przejdź na konto Premium.`,
+    }
+  }
+
+  await db.cartItem.create({ data: { userId: user.id, productId, quantity } })
+  revalidatePath('/cart')
+  return { success: true }
+}
+
+export async function removeFromDbCart(productId: string) {
+  const user = await g
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-haiku-4-5-20251001)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `cart.ts`, lines 96 to 123
+
+**Input:**
+
+- endLine: `130`
+- filePath: `c:\Projects\infoshare-accenture-ai-dev-1\lib\actions\cart.ts`
+- startLine: `96`
+
+**Result:**
+
+```
+export async function mergeGuestCart(items: CartCookieItem[]) {
+  const user = await getSessionUser()
+  if (!user || items.length === 0) return { success: true }
+
+  for (const item of items) {
+    const existing = await db.cartItem.findUnique({
+      where: { userId_productId: { userId: user.id, productId: item.productId } },
+    })
+
+    if (existing) {
+      await db.cartItem.update({
+        where: { id: existing.id },
+        data: { quantity: Math.max(existing.quantity, item.quantity) },
+      })
+    } else {
+      const count = await db.cartItem.count({ where: { userId: user.id } })
+      if (count >= CART_LIMIT) break // BR-01: cicha blokada
+
+      await db.cartItem.create({
+        data: { userId: user.id, productId: item.productId, quantity: item.quantity },
+      }).catch(() => null) // ignoruj nieistniejące produkty
+    }
+  }
+
+  revalidatePath('/cart')
+  return { success: true }
+}
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-haiku-4-5-20251001)**_
+
+<tool-use data-tool-type="search" data-tool-name="grep_search"><details>
+<summary>Tool use: **grep_search**</summary>
+
+Searched for text `mergeGuestCart` (`**/*.ts`), 3 results
+
+**Input:**
+
+- includeIgnoredFiles: `false`
+- includePattern: `**/*.ts`
+- isRegexp: `false`
+- maxResults: `20`
+- query: `mergeGuestCart`
+
+**Result:**
+
+```
+Found 3 matches in 2 files for "mergeGuestCart"
+
+hooks/useCart.ts
+9:  mergeGuestCart,
+75:        const result = await mergeGuestCart(guest.map(({ productId, quantity }) => ({ productId, quantity })))
+
+lib/actions/cart.ts
+96:export async function mergeGuestCart(items: CartCookieItem[]) {
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-haiku-4-5-20251001)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `useCart.ts`, lines 60 to 120
+
+**Input:**
+
+- endLine: `120`
+- filePath: `c:\Projects\infoshare-accenture-ai-dev-1\hooks\useCart.ts`
+- startLine: `60`
+
+**Result:**
+
+```
+        }))
+      )
+    } catch {
+      setError('Nie udało się pobrać koszyka. Odśwież stronę.')
+    } finally {
+      setLoadingDb(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!isLoggedIn) return
+    let active = true
+    async function load() {
+      const guest = useCartStore.getState().items
+      if (guest.length) {
+        const result = await mergeGuestCart(guest.map(({ productId, quantity }) => ({ productId, quantity })))
+        if (result.success) useCartStore.getState().clearCart()
+      }
+      if (active) await fetchDbCart()
+    }
+    load().catch(() => { if (active) setError('Nie udało się połączyć koszyka. Odśwież stronę.') })
+    return () => { active = false }
+  }, [isLoggedIn, fetchDbCart])
+
+  // Unifikacja — zwróć właściwe items w zależności od stanu logowania
+  const items: CartLineItem[] = isLoggedIn ? dbItems : guestItems
+
+  const total = items.reduce((sum, i) => sum + i.price * i.quantity, 0)
+  const count = items.reduce((sum, i) => sum + i.quantity, 0)
+
+  // ─── Akcje ────────────────────────────────────────────
+
+  async function addItem(
+    product: { id: string; name: string; price: number; stock: number; imageUrl: string },
+    quantity = 1
+  ): Promise<{ success?: boolean; error?: string }> {
+    setError(null)
+
+    if (isLoggedIn) {
+      const result = await addToDbCart(product.id, quantity)
+      if (result?.success) await fetchDbCart()
+      if (result?.error) setError(result.error)
+      return result
+    }
+
+    // Guest — limitacja BR-01 po stronie klienta
+    const currentDistinct = new Set(guestItems.map((i) => i.productId))
+    if (!currentDistinct.has(product.id) && currentDistinct.size >= 5) {
+      const msg = 'Osiągnięto limit pozycji dla konta standardowego (5). Usuń produkt lub przejdź na konto Premium.'
+      setError(msg)
+      return { error: msg }
+    }
+
+    guestAdd({ productId: product.id, name: product.name, price: product.price, quantity, imageUrl: product
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-haiku-4-5-20251001)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `cart.ts`
+
+**Input:**
+
+- endLine: `70`
+- filePath: `c:\Projects\infoshare-accenture-ai-dev-1\store\cart.ts`
+- startLine: `1`
+
+**Result:**
+
+```
+'use client'
+
+import { create } from 'zustand'
+import { persist, createJSONStorage } from 'zustand/middleware'
+
+export interface CartItem {
+  productId: string
+  name: string
+  price: number   // grosze
+  quantity: number
+  imageUrl: string
+}
+
+interface CartState {
+  items: CartItem[]
+  addItem: (item: CartItem) => void
+  removeItem: (productId: string) => void
+  updateQuantity: (productId: string, quantity: number) => void
+  clearCart: () => void
+  total: () => number
+}
+
+export const useCartStore = create<CartState>()(
+  persist(
+    (set, get) => ({
+      items: [],
+
+      addItem: (item) =>
+        set((s) => {
+          const existing = s.items.find((i) => i.productId === item.productId)
+          if (existing) {
+            return {
+              items: s.items.map((i) =>
+                i.productId === item.productId
+                  ? { ...i, quantity: i.quantity + item.quantity }
+                  : i
+              ),
+            }
+          }
+          return { items: [...s.items, item] }
+        }),
+
+      removeItem: (productId) =>
+        set((s) => ({ items: s.items.filter((i) => i.productId !== productId) })),
+
+      updateQuantity: (productId, quantity) =>
+        set((s) => ({
+          items: s.items.map((i) =>
+            i.productId === productId ? { ...i, quantity } : i
+          ),
+        })),
+
+      clearCart: () => set({ items: [] }),
+
+      total: () =>
+        get().items.reduce((sum, i) => sum + i.price * i.quantity, 0),
+    }),
+    {
+      name: 'shopeasy-guest-cart',
+      storage: createJSONStorage(() => localStorage),
+      skipHydration: true,
+    }
+  )
+)
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-haiku-4-5-20251001)**_
+
+Teraz mam wystarczającą wiedzę. Przeczytam LogoutButton i Login page dla pełności.
+
+_**Agent (anthropic/Anthropic/claude-haiku-4-5-20251001)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `LogoutButton.tsx`
+
+**Input:**
+
+- endLine: `40`
+- filePath: `c:\Projects\infoshare-accenture-ai-dev-1\components\layout\LogoutButton.tsx`
+- startLine: `1`
+
+**Result:**
+
+```
+'use client'
+import { useRouter } from 'next/navigation'
+
+export function LogoutButton() {
+  const router = useRouter()
+
+  async function handleLogout() {
+    await fetch('/api/auth/logout', { method: 'POST' })
+    router.push('/login')
+    router.refresh()
+  }
+
+  return (
+    <button
+      onClick={handleLogout}
+      className="text-sm text-gray-500 hover:text-red-600"
+    >
+      Wyloguj
+    </button>
+  )
+}
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-haiku-4-5-20251001)**_
+
+Doskonale! Teraz mam pełny obraz. Przygotowuję analizę kodu dla każdego kroku.
+
+---
+
+# Analiza kodu źródłowego — Multi-phase Guest Cart Flow
+
+Na podstawie poprzedniej analizy user flow, oto mapa kodu dla każdego kroku:
+
+## Krok 1: Niezalogowany — Dodaj produkt do koszyka (12 szt.)
+
+### Komponenty i UI
+- **File**: `components/products/AddToCartButton.tsx`
+  - **Symbol**:  (komponent)
+  - **Akcja**: onClick → 
+  - **Hook**:  → 
+
+- **File**: `components/layout/Header.tsx`
+  - **Symbol**: Link do `/cart`
+  - **Akcja**: Nawigacja do koszyka
+
+### State Management (Guest)
+- **File**: `store/cart.ts`
+  - **Symbol**:  (Zustand store)
+  - **Metoda**:  — sumuje ilości w localStorage
+  - **Storage**: localStorage (`shopeasy-guest-cart`)
+  - **Logika**: Jeśli produkt istnieje → `quantity + item.quantity` ✅
+
+### Logika Hook'a
+- **File**: `hooks/useCart.ts`
+  - **Symbol**:  (hook)
+  - **Warunek**: `if (!isLoggedIn)` → używa  z Zustand
+  - **Linijka**: ~90-110 (guest path)
+
+---
+
+## Krok 2: Zalogowanie
+
+### API Endpoint
+- **File**: `app/api/auth/login/route.ts`
+  - **Symbol**:  handler
+  - **Akcje**:
+    1.  — walidacja
+    2.  — szuka użytkownika
+    3.  — weryfikuje hasło
+    4.  — ustawia sesję
+  - **Linia**: 71 ()
+
+### Session Management
+- **File**: `lib/session.ts` (nie czytane, ale znane)
+  - **Symbol**: 
+  - **Akcja**: Tworzy sesję w cookie/storage
+
+### Guest Cart Merge
+- **File**: `hooks/useCart.ts`
+  - **Symbol**:  hook (linia ~69)
+  - **Warunek**: `if (isLoggedIn)` 
+
+ hook (linia ~69)
+  - **Warunek**: `if (isLoggedIn)` — triggered po zalogowaniu
+  - **Akcja**: 
+    1. Pobiera `guest = useCartStore.getState().items`
+    2. Wywołuje `mergeGuestCart(guest.map(...))`
+    3. Czyści localStorage: 
+    4. Pobiera DB koszyk: 
+  - **Linie**: 69-82
+
+### Server-side Merge Logic
+- **File**: `lib/actions/cart.ts`
+  - **Symbol**:  (server action)
+  - **Logika**:
+    - Dla każdego produktu z localStorage:
+      - Jeśli istnieje w DB:  
+      - Jeśli nie: `createNew()`
+    - BR-01: max 5 różnych produktów
+  - **Linie**: 96-123
+
+---
+
+## Krok 3: Wylogowanie + Dodanie nowych produktów
+
+### Logout Button
+- **File**: `components/layout/LogoutButton.tsx`
+  - **Symbol**:  (komponent)
+  - **Akcja**:  → 
+
+### Logout Endpoint
+- **File**: `app/api/auth/logout/route.ts`
+  - **Symbol**:  handler
+  - **Akcja**:  — usuwa sesję
+  - **Linia**: 4
+
+### Session Clear Logic
+- **File**: `lib/session.ts` (nie czytane, ale znane)
+  - **Symbol**: 
+  - **Efekt**:  detektuje `isLoggedIn = false` → przełącza na guest mode
+
+### Druga faza dodawania produktów (Guest)
+- **File**: `hooks/useCart.ts`
+  - **Symbol**:  hook
+  - **Warunek**: `if (!isLoggedIn)` 
+  - **Akcja**:  z Zustand
+  - **Efekt**: localStorage jest REPLACED (nie merged) — stare produkty znikają 📝
+
+- **File**: `store/cart.ts`
+  - **Symbol**:  
+  - **Logika**: Nowe produkty są dodane, ale stare z localStorage są wyczyszczone w kroku 2
+  - **Storage**: localStorage (`shopeasy-guest-cart`)
+
+---
+
+## Krok 4: Zalogowanie (ponownie) — Sumowanie ilości
+
+### Login + Merge (tak jak Krok 2)
+- **File**: `app/api/auth/login/route.ts` → 
+- **File**: `hooks/useCart.ts` →  callback
+- **File**: `lib/actions/cart.ts` →  server action
+
+### Kluczowa różnica:
+- **Baza danych** zawiera: Donica x4, Ekspres x3, Mysz x5 (z Fazy 1)
+- **localStorage** zawiera: Kurtka x2, Słuchawki x3 (z Fazy 3)
+- **Merge**: Produkty z localStorage są dodane do bazy → **RAZEM 17 szt.** ✅
+
+---
+
+## Podsumowanie — Mapa Symboli
+
+| Krok | Plik | Symbol | Typ | Akcja |
+|------|------|--------|-----|-------|
+| 1 | `AddToCartButton.tsx` |  | Komponent | Dodaj do koszyka (guest) |
+| 1 | `cart.ts` |  | Zustand Store | localStorage + sumowanie |
+| 1 | `useCart.ts` |  | Hook | Abstraktuje gość/zalogowany |
+| 2 | `route.ts` |  | API Handler | Logowanie +  |
+| 2 | `useCart.ts` |  (isLoggedIn) | Hook Effect | Trigger merge |
+| 2 | `cart.ts` |  | Server Action | Scalaj localStorage → DB |
+| 3 | `LogoutButton.tsx` |  | Komponent | Wyloguj |
+| 3 | `route.ts` |  | API Handler | Logout +  |
+| 3 | `cart.ts` |  | Zustand Method | Nowe produkty (localStorage replaced) |
+| 4 | (wszystkie jak krok 2) | | | Ponowne logowanie + merge |
+
+---
+
+## Funkcje Kluczowe
+
+```
+addToDbCart()           [lib/actions/cart.ts:25]  — Dodaj do DB (zalogowany)
+removeFromDbCart()      [lib/actions/cart.ts:63]  — Usuń z DB
+updateDbCartQuantity()  [lib/actions/cart.ts:73]  — Update ilości w DB
+getDbCart()             [lib/actions/cart.ts:12]  — Pobierz DB koszyk
+mergeGuestCart()        [lib/actions/cart.ts:96]  — Scalaj gość → zalogowany ⭐
+setSession()            [lib/session.ts]          — Ustawij sesję (login)
+clearSession()          [lib/session.ts]          — Usuń sesję (logout)
+useCart()               [hooks/useCart.ts:22]     — Main hook — abstraktuje logikę
+useCartStore            [store/cart.ts:23]        — Zustand — localStorage
+```
+
+---
+
+Czy chcesz, żebym **zapisał tę mapę do pliku** w formie strukturyzowanej analizy kodu?
+
+_**Agent (anthropic/Anthropic/claude-haiku-4-5-20251001)**_
+
+<tool-use data-tool-type="generic" data-tool-name="vscode_askQuestions"><details>
+<summary>Tool use: **vscode_askQuestions**</summary>
+
+Analyzing your answers...
+
+**Input:**
+
+- questions:
+
+```
+[
+  {
+    "header": "save_code_analysis",
+    "options": [
+      {
+        "label": "Tak, zapisz do ./notatki/",
+        "recommended": true
+      },
+      {
+        "label": "Nie, koniec"
+      }
+    ],
+    "question": "Czy zapisać mapę kodu do pliku?"
+  }
+]
+```
+
+
+**Result:**
+
+```
+{"answers":{"save_code_analysis":{"selected":["Tak, zapisz do ./notatki/"],"freeText":null,"skipped":false}}}
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-haiku-4-5-20251001)**_
+
+<tool-use data-tool-type="write" data-tool-name="create_file"><details>
+<summary>Tool use: **create_file**</summary>
+
+Created `2026-10-06-source-code-map-guest-cart.md`
+
+**Input:**
+
+- content:
+
+````
+# Mapa kodu źródłowego — Multi-phase Guest Cart Flow
+
+**Data**: 2026-10-06  
+**Projekt**: ShopEasy (Next.js 16 + React 19 + Prisma 7 + SQLite)  
+**Temat**: Analiza kodu dla scenariusza: Niezalogowany → Dodaj produkty → Zaloguj → Wyloguj → Nowe produkty → Zaloguj
+
+---
+
+## Krok 1: Niezalogowany — Dodaj produkt do koszyka (12 szt.)
+
+### 1.1 UI — Przycisk "Dodaj do koszyka"
+
+| Aspekt | Szczegóły |
+|--------|-----------|
+| **Plik** | `components/products/AddToCartButton.tsx` |
+| **Komponent** | `AddToCartButton` |
+| **Props** | `product: { id, name, price, stock, imageUrl }` |
+| **Hook** | `useCart()` → `addItem()` |
+| **Akcja** | `onClick` → `handleAddToCart()` |
+| **Status** | ✅ Wyświetlany dla niezalogowanych |
+
+```tsx
+// Pseudo-kod
+export function AddToCartButton({ product }) {
+  const { addItem, loading, error } = useCart()
+  
+  const handleAddToCart = async () => {
+    await addItem(product, 1)
+  }
+  
+  return <button onClick={handleAddToCart}>Dodaj do koszyka</button>
+}
+```
+
+### 1.2 Hook — Logika dodawania (Guest path)
+
+| Aspekt | Szczegóły |
+|--------|-----------|
+| **Plik** | `hooks/useCart.ts` |
+| **Hook** | `useCart()` |
+| **Funkcja** | `addItem()` |
+| **Linia** | ~90-110 |
+| **Warunek** | `if (!isLoggedIn)` |
+| **Akcja** | `guestAdd()` z Zustand store |
+| **Zwrot** | `{ success: true }` |
+
+```tsx
+// Z hooks/useCart.ts
+async function addItem(
+  product: { id: string; name: string; price: number; stock: number; imageUrl: string },
+  quantity = 1
+): Promise<{ success?: boolean; error?: string }> {
+  setError(null)
+
+  if (isLoggedIn) {
+    // Path dla zalogowanego
+  }
+
+  // Guest path — limitacja BR-01 (max 5 produktów)
+  const currentDistinct = new Set(guestItems.map((i) => i.productId))
+  if (!currentDistinct.has(product.id) && currentDistinct.size >= 5) {
+    const msg = 'Osiągnięto limit pozycji dla konta standardowego (5).'
+    setError(msg)
+    return { error: msg }
+  }
+
+  guestAdd({ productId: product.id, name: product.name, price: product.price, quantity, imageUrl: product.imageUrl })
+  return { success: true }
+}
+```
+
+### 1.3 State Management — localStorage (Guest Cart)
+
+| Aspekt | Szczegóły |
+|--------|-----------|
+| **Plik** | `store/cart.ts` |
+| **Store** | `useCartStore` (Zustand) |
+| **Storage** | localStorage (`shopeasy-guest-cart`) |
+| **Metoda** | `addItem()` |
+| **Logika** | Sumuje ilości jeśli produkt istnieje |
+| **Persistence** | ✅ `persist()` middleware |
+
+```tsx
+// Z store/cart.ts
+addItem: (item) =>
+  set((s) => {
+    const existing = s.items.find((i) => i.productId === item.productId)
+    if (existing) {
+      return {
+        items: s.items.map((i) =>
+          i.productId === item.productId
+            ? { ...i, quantity: i.quantity + item.quantity }  // SUMA ✅
+            : i
+        ),
+      }
+    }
+    return { items: [...s.items, item] }
+  }),
+```
+
+### 1.4 Wynik
+
+- **localStorage**: `{ "shopeasy-guest-cart": [Donica x4, Ekspres x3, Mysz x5] }`
+- **Status**: ✅ Produkty przechowywane lokalnie
+- **Sumowanie**: ✅ Prawidłowe (4+3+5 = 12 szt.)
+
+---
+
+## Krok 2: Zalogowanie
+
+### 2.1 Login Form
+
+| Aspekt | Szczegóły |
+|--------|-----------|
+| **Plik** | `app/(auth)/login/page.tsx` |
+| **Komponent** | `LoginForm` |
+| **Metoda** | `onSubmit(data: LoginInput)` |
+| **API Endpoint** | `POST /api/auth/login` |
+| **Dane** | email, password |
+
+### 2.2 Login API Handler
+
+| Aspekt | Szczegóły |
+|--------|-----------|
+| **Plik** | `app/api/auth/login/route.ts` |
+| **Handler** | `POST()` |
+| **Kroki** | 1. Parse → 2. DB lookup → 3. Password verify → 4. setSession |
+| **Walidacja** | LoginSchema |
+| **Security** | bcrypt compare, failedLoginAttempts tracking |
+
+```tsx
+// Z app/api/auth/login/route.ts
+export async function POST(req: NextRequest) {
+  const { email, password } = parsed.data
+
+  const user = await db.user.findUnique({ where: { email } })
+  if (!user) return { error: 'Nieprawidłowy e-mail lub hasło.' }
+
+  const passwordOk = await bcrypt.compare(password, user.passwordHash)
+  if (!passwordOk) { /* handle failures */ }
+
+  // ✅ Ustaw sesję
+  await setSession({ id: user.id, email: user.email, name: user.name })
+
+  return NextResponse.json({ success: true })
+}
+```
+
+**Linia**: 71 (`setSession()`)
+
+### 2.3 Session Management
+
+| Aspekt | Szczegóły |
+|--------|-----------|
+| **Plik** | `lib/session.ts` |
+| **Funkcja** | `setSession(data)` |
+| **Efekt** | Ustawia sesję (cookie/storage) |
+| **Hook** | `useCart()` detektuje zmianę `isLoggedIn = true` |
+
+### 2.4 Guest Cart Merge — Hook Effect
+
+| Aspekt | Szczegóły |
+|--------|-----------|
+| **Plik** | `hooks/useCart.ts` |
+| **Hook Effect** | `useEffect()` z dependency `[isLoggedIn]` |
+| **Linie** | 69-82 |
+| **Trigger** | `isLoggedIn` zmienia się na `true` |
+| **Akcje** | 1. Pobierz items z localStorage 2. Merge do DB 3. Wyczyść localStorage 4. Fetch DB cart |
+
+```tsx
+// Z hooks/useCart.ts linijka ~69
+useEffect(() => {
+  if (!isLoggedIn) return
+  let active = true
+  async function load() {
+    const guest = useCartStore.getState().items
+    if (guest.length) {
+      const result = await mergeGuestCart(guest.map(({ productId, quantity }) => ({ productId, quantity })))
+      if (result.success) useCartStore.getState().clearCart()  // ✅ Wyczyść localStorage
+    }
+    if (active) await fetchDbCart()  // ✅ Pobierz DB koszyk
+  }
+  load().catch(...)
+  return () => { active = false }
+}, [isLoggedIn, fetchDbCart])
+```
+
+### 2.5 Server-side Merge — mergeGuestCart()
+
+| Aspekt | Szczegóły |
+|--------|-----------|
+| **Plik** | `lib/actions/cart.ts` |
+| **Funkcja** | `mergeGuestCart(items: CartCookieItem[])` |
+| **Typ** | Server Action |
+| **Linie** | 96-123 |
+| **Logika** | Dla każdego produktu z localStorage: dodaj/update w DB |
+| **BR-01** | Max 5 różnych produktów |
+
+```tsx
+// Z lib/actions/cart.ts linijka 96
+export async function mergeGuestCart(items: CartCookieItem[]) {
+  const user = await getSessionUser()
+  if (!user || items.length === 0) return { success: true }
+
+  for (const item of items) {
+    const existing = await db.cartItem.findUnique({
+      where: { userId_productId: { userId: user.id, productId: item.productId } },
+    })
+
+    if (existing) {
+      await db.cartItem.update({
+        where: { id: existing.id },
+        data: { quantity: Math.max(existing.quantity, item.quantity) },
+      })
+    } else {
+      const count = await db.cartItem.count({ where: { userId: user.id } })
+      if (count >= CART_LIMIT) break
+
+      await db.cartItem.create({
+        data: { userId: user.id, productId: item.productId, quantity: item.quantity },
+      }).catch(() => null)
+    }
+  }
+
+  revalidatePath('/cart')
+  return { success: true }
+}
+```
+
+**Uwaga**: Używa `Math.max()` zamiast sumy — to oznacza że jeśli produkt istnieje w obu koszykach (gościa i zalogowanego), przyjmuje większą ilość.
+
+### 2.6 Fetch DB Cart
+
+| Aspekt | Szczegóły |
+|--------|-----------|
+| **Plik** | `hooks/useCart.ts` |
+| **Funkcja** | `fetchDbCart()` |
+| **Linie** | ~42-68 |
+| **API** | `GET /api/cart` |
+| **Dane** | CartItems z relacją Product |
+| **Efekt** | Ustawia `dbItems` state |
+
+### 2.7 Wynik
+
+- **Sesja**: ✅ Aktywna (isLoggedIn = true)
+- **localStorage**: ✅ Wyczyszczony (clearCart)
+- **Baza danych**: ✅ Zawiera Donica x4, Ekspres x3, Mysz x5
+- **Koszyk użytkownika**: ✅ 12 szt., 1809,88 zł
+- **Opóźnienie**: ⏱️ ~3-5s (async loading)
+
+---
+
+## Krok 3: Wylogowanie + Dodanie nowych produktów
+
+### 3.1 Logout Button
+
+| Aspekt | Szczegóły |
+|--------|-----------|
+| **Plik** | `components/layout/LogoutButton.tsx` |
+| **Komponent** | `LogoutButton` |
+| **Akcja** | `onClick` → `handleLogout()` |
+| **Kroki** | 1. POST `/api/auth/logout` 2. `router.push('/login')` 3. `router.refresh()` |
+
+```tsx
+// Z components/layout/LogoutButton.tsx
+export function LogoutButton() {
+  const router = useRouter()
+
+  async function handleLogout() {
+    await fetch('/api/auth/logout', { method: 'POST' })
+    router.push('/login')
+    router.refresh()
+  }
+
+  return <button onClick={handleLogout}>Wyloguj</button>
+}
+```
+
+### 3.2 Logout API Handler
+
+| Aspekt | Szczegóły |
+|--------|-----------|
+| **Plik** | `app/api/auth/logout/route.ts` |
+| **Handler** | `POST()` |
+| **Akcja** | `clearSession()` |
+| **Efekt** | Usuwa sesję |
+| **Linia** | 4 |
+
+```tsx
+// Z app/api/auth/logout/route.ts
+export async function POST() {
+  await clearSession()
+  return NextResponse.json({ success: true })
+}
+```
+
+### 3.3 Session Clear Logic
+
+| Aspekt | Szczegóły |
+|--------|-----------|
+| **Plik** | `lib/session.ts` |
+| **Funkcja** | `clearSession()` |
+| **Efekt** | Usuwa sesję |
+| **Hook Detection** | `useCart()` detektuje `isLoggedIn = false` |
+| **Rezultat** | Przełączenie na guest mode |
+
+### 3.4 Druga faza — Dodaj nowe produkty (Guest path)
+
+| Aspekt | Szczegóły |
+|--------|-----------|
+| **Plik** | `components/products/AddToCartButton.tsx` |
+| **Hook** | `useCart()` → `addItem()` (guest path) |
+| **Produkty** | Kurtka x2, Słuchawki x3 |
+| **Storage** | localStorage (`shopeasy-guest-cart`) |
+| **Efekt localStorage** | ⚠️ REPLACED (nie MERGED) |
+
+**Logika localStorage**:
+- Po wylogowaniu (Faza 2), `clearCart()` wyczyścił localStorage
+- Faza 3b dodaje nowe produkty → localStorage zawiera TYLKO Kurtka x2, Słuchawki x3
+- Stare produkty (Donica, Ekspres, Mysz) są w **bazie danych**, a nie w localStorage
+
+### 3.5 Wynik
+
+- **localStorage**: `{ "shopeasy-guest-cart": [Kurtka x2, Słuchawki x3] }`
+- **Baza danych**: ✅ Zawiera stare produkty (Donica x4, Ekspres x3, Mysz x5)
+- **Koszyk gościa**: 5 szt., 1399,95 zł
+- **Status**: ⚠️ Stare produkty NIE widoczne w localStorage (ale są w bazie!)
+
+---
+
+## Krok 4: Zalogowanie (ponownie) — Sumowanie produktów
+
+### 4.1 Login (jak Krok 2)
+
+| Aspekt | Szczegóły |
+|--------|-----------|
+| **Plik** | `app/api/auth/login/route.ts` |
+| **Akcja** | `setSession()` → Trigger merge |
+| **Efekt** | `isLoggedIn = true` → Hook effect uruchamia się |
+
+### 4.2 mergeGuestCart() — Druga iteracja
+
+| Aspekt | Szczegóły |
+|--------|-----------|
+| **Źródło localStorage** | Kurtka x2, Słuchawki x3 (z Fazy 3b) |
+| **Działanie** | Dodaj produkty z localStorage do bazy danych |
+| **Wynik DB** | Donica x4 + Ekspres x3 + Mysz x5 + Kurtka x2 + Słuchawki x3 |
+| **Ilość razem** | 4+3+5+2+3 = **17 szt.** ✅ |
+
+**Logika**:
+```
+Baza przed merge:  Donica x4, Ekspres x3, Mysz x5
+localStorage:      Kurtka x2, Słuchawki x3
+                   ↓
+mergeGuestCart()
+                   ↓
+Baza po merge:     Donica x4, Ekspres x3, Mysz x5, Kurtka x2, Słuchawki x3
+```
+
+### 4.3 fetchDbCart() — Pobierz pełny koszyk
+
+| Aspekt | Szczegóły |
+|--------|-----------|
+| **API** | `GET /api/cart` |
+| **Zwrot** | Wszystkie CartItems zalogowanego użytkownika |
+| **Logika** | `db.cartItem.findMany({ where: { userId: user.id } })` |
+
+### 4.4 Wynik KOŃCOWY
+
+| Produkt | Ilość | Cena/szt. | Razem | Źródło |
+|---------|-------|-----------|-------|--------|
+| Donica ceramiczna | 4 | 59,99 zł | 239,96 zł | Faza 1 (DB) |
+| Ekspres do kawy | 3 | 189,99 zł | 569,97 zł | Faza 1 (DB) |
+| Mysz gamingowa | 5 | 199,99 zł | 999,95 zł | Faza 1 (DB) |
+| Kurtka softshell | 2 | 249,99 zł | 499,98 zł | Faza 3b (localStorage) |
+| Słuchawki bezprzewodowe | 3 | 299,99 zł | 899,97 zł | Faza 3b (localStorage) |
+| **RAZEM** | **17 szt.** | | **3209,83 zł** | ✅ SCALANE |
+
+---
+
+## Podsumowanie — Mapa symboli
+
+### By Krok
+
+| Krok | Komponent/Funkcja | Plik | Typ | Linia | Akcja |
+|------|-------------------|------|-----|-------|-------|
+| 1 | `AddToCartButton` | `components/products/AddToCartButton.tsx` | Komponent | - | Przycisk dodaj |
+| 1 | `useCart()` | `hooks/useCart.ts` | Hook | ~90-110 | Guest addItem |
+| 1 | `useCartStore` | `store/cart.ts` | Zustand | ~23 | localStorage + sumowanie |
+| 2 | `LoginForm` | `app/(auth)/login/page.tsx` | Komponent | - | Formularz login |
+| 2 | `POST()` | `app/api/auth/login/route.ts` | API | - | Logowanie + setSession |
+| 2 | `setSession()` | `lib/session.ts` | Funkcja | - | Ustaw sesję |
+| 2 | `useEffect()` | `hooks/useCart.ts` | Hook Effect | ~69-82 | Trigger merge |
+| 2 | `mergeGuestCart()` | `lib/actions/cart.ts` | Server Action | ~96-123 | Scalaj localStorage → DB |
+| 2 | `fetchDbCart()` | `hooks/useCart.ts` | Hook | ~42-68 | Pobierz DB koszyk |
+| 3 | `LogoutButton` | `components/layout/LogoutButton.tsx` | Komponent | - | Przycisk logout |
+| 3 | `POST()` | `app/api/auth/logout/route.ts` | API | 4 | Wyloguj + clearSession |
+| 3 | `clearSession()` | `lib/session.ts` | Funkcja | - | Usuń sesję |
+| 3 | `AddToCartButton` | `components/products/AddToCartButton.tsx` | Komponent | - | Nowe produkty (guest) |
+| 4 | (jak Krok 2) | | | | Merge produktów |
+
+### By Typ
+
+#### Komponenty React
+- `AddToCartButton` [components/products/AddToCartButton.tsx]
+- `LoginForm` [app/(auth)/login/page.tsx]
+- `LogoutButton` [components/layout/LogoutButton.tsx]
+
+#### Hooki
+- `useCart()` [hooks/useCart.ts] — główny hook do abstrakcji logiki
+- `useCartStore` [store/cart.ts] — Zustand store
+
+#### API Endpoints
+- `POST /api/auth/login` [app/api/auth/login/route.ts] — logowanie
+- `POST /api/auth/logout` [app/api/auth/logout/route.ts] — wylogowanie
+- `GET /api/cart` [app/api/cart/route.ts] — pobierz koszyk
+
+#### Server Actions
+- `mergeGuestCart()` [lib/actions/cart.ts] — scalaj gościa → zalogowany
+- `addToDbCart()` [lib/actions/cart.ts] — dodaj do DB
+- `removeFromDbCart()` [lib/actions/cart.ts] — usuń z DB
+- `updateDbCartQuantity()` [lib/actions/cart.ts] — update ilości
+- `getDbCart()` [lib/actions/cart.ts] — pobierz z DB
+- `clearDbCart()` [lib/actions/cart.ts] — wyczyść DB
+
+#### Session Management
+- `setSession()` [lib/session.ts] — ustaw sesję (login)
+- `clearSession()` [lib/session.ts] — usuń sesję (logout)
+- `getSessionUser()` [lib/session.ts] — pobierz zalogowanego użytkownika
+
+---
+
+## Przepływ danych — Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ FAZA 1: Niezalogowany — Dodaj produkty                          │
+├─────────────────────────────────────────────────────────────────┤
+│ AddToCartButton → useCart() → useCartStore.addItem()             │
+│                              ↓                                    │
+│                        localStorage ("shopeasy-guest-cart")      │
+│                   [Donica x4, Ekspres x3, Mysz x5]              │
+└─────────────────────────────────────────────────────────────────┘
+                             ↓
+┌─────────────────────────────────────────────────────────────────┐
+│ FAZA 2: Zalogowanie                                              │
+├─────────────────────────────────────────────────────────────────┤
+│ POST /api/auth/login → setSession()                             │
+│                        ↓                                         │
+│ useCart() detektuje isLoggedIn = true                           │
+│ → mergeGuestCart() [server action]                              │
+│   - localStorage → DB (Prisma)                                  │
+│   - clearCart() → wyczyszcz localStorage                        │
+│ → fetchDbCart() → React state dbItems                           │
+└─────────────────────────────────────────────────────────────────┘
+            Wynik: DB = [Donica x4, Ekspres x3, Mysz x5]
+                   localStorage = [] (wyczyszczone)
+                             ↓
+┌─────────────────────────────────────────────────────────────────┐
+│ FAZA 3: Wylogowanie + Nowe produkty                             │
+├─────────────────────────────────────────────────────────────────┤
+│ POST /api/auth/logout → clearSession()                          │
+│ isLoggedIn = false → Guest mode                                 │
+│                                                                  │
+│ AddToCartButton → useCart() → useCartStore.addItem()            │
+│                              ↓                                    │
+│                        localStorage (REPLACED)                  │
+│                   [Kurtka x2, Słuchawki x3]                     │
+│                   (stare produkty zniknęły!)                    │
+└─────────────────────────────────────────────────────────────────┘
+           DB = [Donica x4, Ekspres x3, Mysz x5] ← zachowane!
+           localStorage = [Kurtka x2, Słuchawki x3]
+                             ↓
+┌─────────────────────────────────────────────────────────────────┐
+│ FAZA 4: Zalogowanie ponownie                                    │
+├─────────────────────────────────────────────────────────────────┤
+│ POST /api/auth/login → setSession()                             │
+│ → mergeGuestCart(localStorage)                                  │
+│   [Kurtka x2, Słuchawki x3] + [Donica x4, Ekspres x3, Mysz x5] │
+│                              ↓                                   │
+│                        DB (MERGED)                              │
+│            [Donica x4, Ekspres x3, Mysz x5,                     │
+│             Kurtka x2, Słuchawki x3]                            │
+│            = 17 szt., 3209,83 zł ✅                             │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Kluczowe Insights
+
+### ✅ Co działa
+1. **Guest Cart Persistence** — produkty z localStorage są scalane do DB przy logowaniu
+2. **Sumowanie ilości** — gdy produkt dodawany wielokrotnie, ilości się dodają
+3. **Merge wielofazowy** — produkty z różnych faz (przed i po logout) są łączone w DB
+4. **Storage splitting** — localStorage przechowuje gościa, DB przechowuje zalogowanych
+
+### ⚠️ Uwagi techniczne
+1. **Math.max zamiast sumy** — w `mergeGuestCart()` używa `Math.max()` dla istniejących pozycji
+   - Jeśli Donica x4 jest w DB i x2 w localStorage → zostaje x4 (max)
+   - W naszym teście to nie wpłynęło (produkty były różne)
+   
+2. **localStorage REPLACE, nie MERGE** — po wylogowaniu localStorage jest wyczyszczany
+   - clearCart() jest wywoływany po mergeGuestCart()
+   - Następnie nowe produkty są dodawane do nowego localStorage
+   
+3. **Asynchroniczny merge** — ~3-5s opóźnienie
+   - Dane ładują się z DB asynchronicznie
+   - UX: ekran może wyglądać pusty zaraz po logowaniu
+
+4. **BR-01 limit** — max 5 różnych produktów na konto (standard)
+   - Guest: limit wdrażany po stronie klienta (currentDistinct.size >= 5)
+   - DB: limit wdrażany po stronie serwera (count >= CART_LIMIT)
+
+### 📊 Storage Strategy
+- **localStorage** — ephemeral, przechowuje ostatnią sesję gościa
+- **Baza danych** — permanent, przechowuje wszystkie produkty zalogowanego użytkownika
+- **Merge** — localStorage → DB (kierunek: gość → zalogowany)
+
+---
+
+## Test Validacji
+
+Aby zweryfikować tę mapę, uruchom:
+
+```bash
+# 1. Wyloguj
+POST /api/auth/logout
+
+# 2. Gość dodaje produkty
+addItem(product1)
+addItem(product2)
+
+# 3. Zaloguj
+POST /api/auth/login
+
+# 4. Sprawdź DB
+GET /api/cart  → powinno zwrócić oba produkty
+
+# 5. Wyloguj + nowe produkty
+POST /api/auth/logout
+addItem(product3)
+
+# 6. Zaloguj
+POST /api/auth/login
+
+# 7. Sprawdź
+GET /api/cart  → powinno zwrócić: product1, product2, product3
+```
+
+---
+
+## Powiązane pliki (nie przeanalizowane, ale istotne)
+
+- `lib/db.ts` — Prisma client
+- `lib/validations/auth.ts` — schema walidacji
+- `app/api/cart/route.ts` — GET /api/cart endpoint
+- `types/index.ts` — definicje CartCookieItem, CartLineItem
+- `app/(shop)/cart/page.tsx` — strona koszyka
+
+---
+
+**Wersja**: 1.0  
+**Data**: 2026-10-06  
+**Status**: ✅ Gotowe do analizy
+
+````
+
+- filePath: `c:\Projects\infoshare-accenture-ai-dev-1\notatki\2026-10-06-source-code-map-guest-cart.md`
+
+**Result:**
+
+```
+The following files were successfully edited:
+c:\Projects\infoshare-accenture-ai-dev-1\notatki\2026-10-06-source-code-map-guest-cart.md
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-haiku-4-5-20251001)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **2026-10-06-source-code-map-guest-cart.md**</summary>
+
+@@ lines 1-1 @@
+
+````
+# Mapa kodu źródłowego — Multi-phase Guest Cart Flow
+
+**Data**: 2026-10-06  
+**Projekt**: ShopEasy (Next.js 16 + React 19 + Prisma 7 + SQLite)  
+**Temat**: Analiza kodu dla scenariusza: Niezalogowany → Dodaj produkty → Zaloguj → Wyloguj → Nowe produkty → Zaloguj
+
+---
+
+## Krok 1: Niezalogowany — Dodaj produkt do koszyka (12 szt.)
+
+### 1.1 UI — Przycisk "Dodaj do koszyka"
+
+| Aspekt | Szczegóły |
+|--------|-----------|
+| **Plik** | `components/products/AddToCartButton.tsx` |
+| **Komponent** | `AddToCartButton` |
+| **Props** | `product: { id, name, price, stock, imageUrl }` |
+| **Hook** | `useCart()` → `addItem()` |
+| **Akcja** | `onClick` → `handleAddToCart()` |
+| **Status** | ✅ Wyświetlany dla niezalogowanych |
+
+```tsx
+// Pseudo-kod
+export function AddToCartButton({ product }) {
+  const { addItem, loading, error } = useCart()
+  
+  const handleAddToCart = async () => {
+    await addItem(product, 1)
+  }
+  
+  return <button onClick={handleAddToCart}>Dodaj do koszyka</button>
+}
+```
+
+### 1.2 Hook — Logika dodawania (Guest path)
+
+| Aspekt | Szczegóły |
+|--------|-----------|
+| **Plik** | `hooks/useCart.ts` |
+| **Hook** | `useCart()` |
+| **Funkcja** | `addItem()` |
+| **Linia** | ~90-110 |
+| **Warunek** | `if (!isLoggedIn)` |
+| **Akcja** | `guestAdd()` z Zustand store |
+| **Zwrot** | `{ success: true }` |
+
+```tsx
+// Z hooks/useCart.ts
+async function addItem(
+  product: { id: string; name: string; price: number; stock: number; imageUrl: string },
+  quantity = 1
+): Promise<{ success?: boolean; error?: string }> {
+  setError(null)
+
+  if (isLoggedIn) {
+    // Path dla zalogowanego
+  }
+
+  // Guest path — limitacja BR-01 (max 5 produktów)
+  const currentDistinct = new Set(guestItems.map((i) => i.productId))
+  if (!currentDistinct.has(product.id) && currentDistinct.size >= 5) {
+    const msg = 'Osiągnięto limit pozycji dla konta standardowego (5).'
+    setError(msg)
+    return { error: msg }
+  }
+
+  guestAdd({ productId: product.id, name: product.name, price: product.price, quantity, imageUrl: product.imageUrl })
+  return { success: true }
+}
+```
+
+### 1.3 State Management — localStorage (Guest Cart)
+
+| Aspekt | Szczegóły |
+|--------|-----------|
+| **Plik** | `store/cart.ts` |
+| **Store** | `useCartStore` (Zustand) |
+| **Storage** | localStorage (`shopeasy-guest-cart`) |
+| **Metoda** | `addItem()` |
+| **Logika** | Sumuje ilości jeśli produkt istnieje |
+| **Persistence** | ✅ `persist()` middleware |
+
+```tsx
+// Z store/cart.ts
+addItem: (item) =>
+  set((s) => {
+    const existing = s.items.find((i) => i.productId === item.productId)
+    if (existing) {
+      return {
+        items: s.items.map((i) =>
+          i.productId === item.productId
+            ? { ...i, quantity: i.quantity + item.quantity }  // SUMA ✅
+            : i
+        ),
+      }
+    }
+    return { items: [...s.items, item] }
+  }),
+```
+
+### 1.4 Wynik
+
+- **localStorage**: `{ "shopeasy-guest-cart": [Donica x4, Ekspres x3, Mysz x5] }`
+- **Status**: ✅ Produkty przechowywane lokalnie
+- **Sumowanie**: ✅ Prawidłowe (4+3+5 = 12 szt.)
+
+---
+
+## Krok 2: Zalogowanie
+
+### 2.1 Login Form
+
+| Aspekt | Szczegóły |
+|--------|-----------|
+| **Plik** | `app/(auth)/login/page.tsx` |
+| **Komponent** | `LoginForm` |
+| **Metoda** | `onSubmit(data: LoginInput)` |
+| **API Endpoint** | `POST /api/auth/login` |
+| **Dane** | email, password |
+
+### 2.2 Login API Handler
+
+| Aspekt | Szczegóły |
+|--------|-----------|
+| **Plik** | `app/api/auth/login/route.ts` |
+| **Handler** | `POST()` |
+| **Kroki** | 1. Parse → 2. DB lookup → 3. Password verify → 4. setSession |
+| **Walidacja** | LoginSchema |
+| **Security** | bcrypt compare, failedLoginAttempts tracking |
+
+```tsx
+// Z app/api/auth/login/route.ts
+export async function POST(req: NextRequest) {
+  const { email, password } = parsed.data
+
+  const user = await db.user.findUnique({ where: { email } })
+  if (!user) return { error: 'Nieprawidłowy e-mail lub hasło.' }
+
+  const passwordOk = await bcrypt.compare(password, user.passwordHash)
+  if (!passwordOk) { /* handle failures */ }
+
+  // ✅ Ustaw sesję
+  await setSession({ id: user.id, email: user.email, name: user.name })
+
+  return NextResponse.json({ success: true })
+}
+```
+
+**Linia**: 71 (`setSession()`)
+
+### 2.3 Session Management
+
+| Aspekt | Szczegóły |
+|--------|-----------|
+| **Plik** | `lib/session.ts` |
+| **Funkcja** | `setSession(data)` |
+| **Efekt** | Ustawia sesję (cookie/storage) |
+| **Hook** | `useCart()` detektuje zmianę `isLoggedIn = true` |
+
+### 2.4 Guest Cart Merge — Hook Effect
+
+| Aspekt | Szczegóły |
+|--------|-----------|
+| **Plik** | `hooks/useCart.ts` |
+| **Hook Effect** | `useEffect()` z dependency `[isLoggedIn]` |
+| **Linie** | 69-82 |
+| **Trigger** | `isLoggedIn` zmienia się na `true` |
+| **Akcje** | 1. Pobierz items z localStorage 2. Merge do DB 3. Wyczyść localStorage 4. Fetch DB cart |
+
+```tsx
+// Z hooks/useCart.ts linijka ~69
+useEffect(() => {
+  if (!isLoggedIn) return
+  let active = true
+  async function load() {
+    const guest = useCartStore.getState().items
+    if (guest.length) {
+      const result = await mergeGuestCart(guest.map(({ productId, quantity }) => ({ productId, quantity })))
+      if (result.success) useCartStore.getState().clearCart()  // ✅ Wyczyść localStorage
+    }
+    if (active) await fetchDbCart()  // ✅ Pobierz DB koszyk
+  }
+  load().catch(...)
+  return () => { active = false }
+}, [isLoggedIn, fetchDbCart])
+```
+
+### 2.5 Server-side Merge — mergeGuestCart()
+
+| Aspekt | Szczegóły |
+|--------|-----------|
+| **Plik** | `lib/actions/cart.ts` |
+| **Funkcja** | `mergeGuestCart(items: CartCookieItem[])` |
+| **Typ** | Server Action |
+| **Linie** | 96-123 |
+| **Logika** | Dla każdego produktu z localStorage: dodaj/update w DB |
+| **BR-01** | Max 5 różnych produktów |
+
+```tsx
+// Z lib/actions/cart.ts linijka 96
+export async function mergeGuestCart(items: CartCookieItem[]) {
+  const user = await getSessionUser()
+  if (!user || items.length === 0) return { success: true }
+
+  for (const item of items) {
+    const existing = await db.cartItem.findUnique({
+      where: { userId_productId: { userId: user.id, productId: item.productId } },
+    })
+
+    if (existing) {
+      await db.cartItem.update({
+        where: { id: existing.id },
+        data: { quantity: Math.max(existing.quantity, item.quantity) },
+      })
+    } else {
+      const count = await db.cartItem.count({ where: { userId: user.id } })
+      if (count >= CART_LIMIT) break
+
+      await db.cartItem.create({
+        data: { userId: user.id, productId: item.productId, quantity: item.quantity },
+      }).catch(() => null)
+    }
+  }
+
+  revalidatePath('/cart')
+  return { success: true }
+}
+```
+
+**Uwaga**: Używa `Math.max()` zamiast sumy — to oznacza że jeśli produkt istnieje w obu koszykach (gościa i zalogowanego), przyjmuje większą ilość.
+
+### 2.6 Fetch DB Cart
+
+| Aspekt | Szczegóły |
+|--------|-----------|
+| **Plik** | `hooks/useCart.ts` |
+| **Funkcja** | `fetchDbCart()` |
+| **Linie** | ~42-68 |
+| **API** | `GET /api/cart` |
+| **Dane** | CartItems z relacją Product |
+| **Efekt** | Ustawia `dbItems` state |
+
+### 2.7 Wynik
+
+- **Sesja**: ✅ Aktywna (isLoggedIn = true)
+- **localStorage**: ✅ Wyczyszczony (clearCart)
+- **Baza danych**: ✅ Zawiera Donica x4, Ekspres x3, Mysz x5
+- **Koszyk użytkownika**: ✅ 12 szt., 1809,88 zł
+- **Opóźnienie**: ⏱️ ~3-5s (async loading)
+
+---
+
+## Krok 3: Wylogowanie + Dodanie nowych produktów
+
+### 3.1 Logout Button
+
+| Aspekt | Szczegóły |
+|--------|-----------|
+| **Plik** | `components/layout/LogoutButton.tsx` |
+| **Komponent** | `LogoutButton` |
+| **Akcja** | `onClick` → `handleLogout()` |
+| **Kroki** | 1. POST `/api/auth/logout` 2. `router.push('/login')` 3. `router.refresh()` |
+
+```tsx
+// Z components/layout/LogoutButton.tsx
+export function LogoutButton() {
+  const router = useRouter()
+
+  async function handleLogout() {
+    await fetch('/api/auth/logout', { method: 'POST' })
+    router.push('/login')
+    router.refresh()
+  }
+
+  return <button onClick={handleLogout}>Wyloguj</button>
+}
+```
+
+### 3.2 Logout API Handler
+
+| Aspekt | Szczegóły |
+|--------|-----------|
+| **Plik** | `app/api/auth/logout/route.ts` |
+| **Handler** | `POST()` |
+| **Akcja** | `clearSession()` |
+| **Efekt** | Usuwa sesję |
+| **Linia** | 4 |
+
+```tsx
+// Z app/api/auth/logout/route.ts
+export async function POST() {
+  await clearSession()
+  return NextResponse.json({ success: true })
+}
+```
+
+### 3.3 Session Clear Logic
+
+| Aspekt | Szczegóły |
+|--------|-----------|
+| **Plik** | `lib/session.ts` |
+| **Funkcja** | `clearSession()` |
+| **Efekt** | Usuwa sesję |
+| **Hook Detection** | `useCart()` detektuje `isLoggedIn = false` |
+| **Rezultat** | Przełączenie na guest mode |
+
+### 3.4 Druga faza — Dodaj nowe produkty (Guest path)
+
+| Aspekt | Szczegóły |
+|--------|-----------|
+| **Plik** | `components/products/AddToCartButton.tsx` |
+| **Hook** | `useCart()` → `addItem()` (guest path) |
+| **Produkty** | Kurtka x2, Słuchawki x3 |
+| **Storage** | localStorage (`shopeasy-guest-cart`) |
+| **Efekt localStorage** | ⚠️ REPLACED (nie MERGED) |
+
+**Logika localStorage**:
+- Po wylogowaniu (Faza 2), `clearCart()` wyczyścił localStorage
+- Faza 3b dodaje nowe produkty → localStorage zawiera TYLKO Kurtka x2, Słuchawki x3
+- Stare produkty (Donica, Ekspres, Mysz) są w **bazie danych**, a nie w localStorage
+
+### 3.5 Wynik
+
+- **localStorage**: `{ "shopeasy-guest-cart": [Kurtka x2, Słuchawki x3] }`
+- **Baza danych**: ✅ Zawiera stare produkty (Donica x4, Ekspres x3, Mysz x5)
+- **Koszyk gościa**: 5 szt., 1399,95 zł
+- **Status**: ⚠️ Stare produkty NIE widoczne w localStorage (ale są w bazie!)
+
+---
+
+## Krok 4: Zalogowanie (ponownie) — Sumowanie produktów
+
+### 4.1 Login (jak Krok 2)
+
+| Aspekt | Szczegóły |
+|--------|-----------|
+| **Plik** | `app/api/auth/login/route.ts` |
+| **Akcja** | `setSession()` → Trigger merge |
+| **Efekt** | `isLoggedIn = true` → Hook effect uruchamia się |
+
+### 4.2 mergeGuestCart() — Druga iteracja
+
+| Aspekt | Szczegóły |
+|--------|-----------|
+| **Źródło localStorage** | Kurtka x2, Słuchawki x3 (z Fazy 3b) |
+| **Działanie** | Dodaj produkty z localStorage do bazy danych |
+| **Wynik DB** | Donica x4 + Ekspres x3 + Mysz x5 + Kurtka x2 + Słuchawki x3 |
+| **Ilość razem** | 4+3+5+2+3 = **17 szt.** ✅ |
+
+**Logika**:
+```
+Baza przed merge:  Donica x4, Ekspres x3, Mysz x5
+localStorage:      Kurtka x2, Słuchawki x3
+                   ↓
+mergeGuestCart()
+                   ↓
+Baza po merge:     Donica x4, Ekspres x3, Mysz x5, Kurtka x2, Słuchawki x3
+```
+
+### 4.3 fetchDbCart() — Pobierz pełny koszyk
+
+| Aspekt | Szczegóły |
+|--------|-----------|
+| **API** | `GET /api/cart` |
+| **Zwrot** | Wszystkie CartItems zalogowanego użytkownika |
+| **Logika** | `db.cartItem.findMany({ where: { userId: user.id } })` |
+
+### 4.4 Wynik KOŃCOWY
+
+| Produkt | Ilość | Cena/szt. | Razem | Źródło |
+|---------|-------|-----------|-------|--------|
+| Donica ceramiczna | 4 | 59,99 zł | 239,96 zł | Faza 1 (DB) |
+| Ekspres do kawy | 3 | 189,99 zł | 569,97 zł | Faza 1 (DB) |
+| Mysz gamingowa | 5 | 199,99 zł | 999,95 zł | Faza 1 (DB) |
+| Kurtka softshell | 2 | 249,99 zł | 499,98 zł | Faza 3b (localStorage) |
+| Słuchawki bezprzewodowe | 3 | 299,99 zł | 899,97 zł | Faza 3b (localStorage) |
+| **RAZEM** | **17 szt.** | | **3209,83 zł** | ✅ SCALANE |
+
+---
+
+## Podsumowanie — Mapa symboli
+
+### By Krok
+
+| Krok | Komponent/Funkcja | Plik | Typ | Linia | Akcja |
+|------|-------------------|------|-----|-------|-------|
+| 1 | `AddToCartButton` | `components/products/AddToCartButton.tsx` | Komponent | - | Przycisk dodaj |
+| 1 | `useCart()` | `hooks/useCart.ts` | Hook | ~90-110 | Guest addItem |
+| 1 | `useCartStore` | `store/cart.ts` | Zustand | ~23 | localStorage + sumowanie |
+| 2 | `LoginForm` | `app/(auth)/login/page.tsx` | Komponent | - | Formularz login |
+| 2 | `POST()` | `app/api/auth/login/route.ts` | API | - | Logowanie + setSession |
+| 2 | `setSession()` | `lib/session.ts` | Funkcja | - | Ustaw sesję |
+| 2 | `useEffect()` | `hooks/useCart.ts` | Hook Effect | ~69-82 | Trigger merge |
+| 2 | `mergeGuestCart()` | `lib/actions/cart.ts` | Server Action | ~96-123 | Scalaj localStorage → DB |
+| 2 | `fetchDbCart()` | `hooks/useCart.ts` | Hook | ~42-68 | Pobierz DB koszyk |
+| 3 | `LogoutButton` | `components/layout/LogoutButton.tsx` | Komponent | - | Przycisk logout |
+| 3 | `POST()` | `app/api/auth/logout/route.ts` | API | 4 | Wyloguj + clearSession |
+| 3 | `clearSession()` | `lib/session.ts` | Funkcja | - | Usuń sesję |
+| 3 | `AddToCartButton` | `components/products/AddToCartButton.tsx` | Komponent | - | Nowe produkty (guest) |
+| 4 | (jak Krok 2) | | | | Merge produktów |
+
+### By Typ
+
+#### Komponenty React
+- `AddToCartButton` [components/products/AddToCartButton.tsx]
+- `LoginForm` [app/(auth)/login/page.tsx]
+- `LogoutButton` [components/layout/LogoutButton.tsx]
+
+#### Hooki
+- `useCart()` [hooks/useCart.ts] — główny hook do abstrakcji logiki
+- `useCartStore` [store/cart.ts] — Zustand store
+
+#### API Endpoints
+- `POST /api/auth/login` [app/api/auth/login/route.ts] — logowanie
+- `POST /api/auth/logout` [app/api/auth/logout/route.ts] — wylogowanie
+- `GET /api/cart` [app/api/cart/route.ts] — pobierz koszyk
+
+#### Server Actions
+- `mergeGuestCart()` [lib/actions/cart.ts] — scalaj gościa → zalogowany
+- `addToDbCart()` [lib/actions/cart.ts] — dodaj do DB
+- `removeFromDbCart()` [lib/actions/cart.ts] — usuń z DB
+- `updateDbCartQuantity()` [lib/actions/cart.ts] — update ilości
+- `getDbCart()` [lib/actions/cart.ts] — pobierz z DB
+- `clearDbCart()` [lib/actions/cart.ts] — wyczyść DB
+
+#### Session Management
+- `setSession()` [lib/session.ts] — ustaw sesję (login)
+- `clearSession()` [lib/session.ts] — usuń sesję (logout)
+- `getSessionUser()` [lib/session.ts] — pobierz zalogowanego użytkownika
+
+---
+
+## Przepływ danych — Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ FAZA 1: Niezalogowany — Dodaj produkty                          │
+├─────────────────────────────────────────────────────────────────┤
+│ AddToCartButton → useCart() → useCartStore.addItem()             │
+│                              ↓                                    │
+│                        localStorage ("shopeasy-guest-cart")      │
+│                   [Donica x4, Ekspres x3, Mysz x5]              │
+└─────────────────────────────────────────────────────────────────┘
+                             ↓
+┌─────────────────────────────────────────────────────────────────┐
+│ FAZA 2: Zalogowanie                                              │
+├─────────────────────────────────────────────────────────────────┤
+│ POST /api/auth/login → setSession()                             │
+│                        ↓                                         │
+│ useCart() detektuje isLoggedIn = true                           │
+│ → mergeGuestCart() [server action]                              │
+│   - localStorage → DB (Prisma)                                  │
+│   - clearCart() → wyczyszcz localStorage                        │
+│ → fetchDbCart() → React state dbItems                           │
+└─────────────────────────────────────────────────────────────────┘
+            Wynik: DB = [Donica x4, Ekspres x3, Mysz x5]
+                   localStorage = [] (wyczyszczone)
+                             ↓
+┌─────────────────────────────────────────────────────────────────┐
+│ FAZA 3: Wylogowanie + Nowe produkty                             │
+├─────────────────────────────────────────────────────────────────┤
+│ POST /api/auth/logout → clearSession()                          │
+│ isLoggedIn = false → Guest mode                                 │
+│                                                                  │
+│ AddToCartButton → useCart() → useCartStore.addItem()            │
+│                              ↓                                    │
+│                        localStorage (REPLACED)                  │
+│                   [Kurtka x2, Słuchawki x3]                     │
+│                   (stare produkty zniknęły!)                    │
+└─────────────────────────────────────────────────────────────────┘
+           DB = [Donica x4, Ekspres x3, Mysz x5] ← zachowane!
+           localStorage = [Kurtka x2, Słuchawki x3]
+                             ↓
+┌─────────────────────────────────────────────────────────────────┐
+│ FAZA 4: Zalogowanie ponownie                                    │
+├─────────────────────────────────────────────────────────────────┤
+│ POST /api/auth/login → setSession()                             │
+│ → mergeGuestCart(localStorage)                                  │
+│   [Kurtka x2, Słuchawki x3] + [Donica x4, Ekspres x3, Mysz x5] │
+│                              ↓                                   │
+│                        DB (MERGED)                              │
+│            [Donica x4, Ekspres x3, Mysz x5,                     │
+│             Kurtka x2, Słuchawki x3]                            │
+│            = 17 szt., 3209,83 zł ✅                             │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Kluczowe Insights
+
+### ✅ Co działa
+1. **Guest Cart Persistence** — produkty z localStorage są scalane do DB przy logowaniu
+2. **Sumowanie ilości** — gdy produkt dodawany wielokrotnie, ilości się dodają
+3. **Merge wielofazowy** — produkty z różnych faz (przed i po logout) są łączone w DB
+4. **Storage splitting** — localStorage przechowuje gościa, DB przechowuje zalogowanych
+
+### ⚠️ Uwagi techniczne
+1. **Math.max zamiast sumy** — w `mergeGuestCart()` używa `Math.max()` dla istniejących pozycji
+   - Jeśli Donica x4 jest w DB i x2 w localStorage → zostaje x4 (max)
+   - W naszym teście to nie wpłynęło (produkty były różne)
+   
+2. **localStorage REPLACE, nie MERGE** — po wylogowaniu localStorage jest wyczyszczany
+   - clearCart() jest wywoływany po mergeGuestCart()
+   - Następnie nowe produkty są dodawane do nowego localStorage
+   
+3. **Asynchroniczny merge** — ~3-5s opóźnienie
+   - Dane ładują się z DB asynchronicznie
+   - UX: ekran może wyglądać pusty zaraz po logowaniu
+
+4. **BR-01 limit** — max 5 różnych produktów na konto (standard)
+   - Guest: limit wdrażany po stronie klienta (currentDistinct.size >= 5)
+   - DB: limit wdrażany po stronie serwera (count >= CART_LIMIT)
+
+### 📊 Storage Strategy
+- **localStorage** — ephemeral, przechowuje ostatnią sesję gościa
+- **Baza danych** — permanent, przechowuje wszystkie produkty zalogowanego użytkownika
+- **Merge** — localStorage → DB (kierunek: gość → zalogowany)
+
+---
+
+## Test Validacji
+
+Aby zweryfikować tę mapę, uruchom:
+
+```bash
+# 1. Wyloguj
+POST /api/auth/logout
+
+# 2. Gość dodaje produkty
+addItem(product1)
+addItem(product2)
+
+# 3. Zaloguj
+POST /api/auth/login
+
+# 4. Sprawdź DB
+GET /api/cart  → powinno zwrócić oba produkty
+
+# 5. Wyloguj + nowe produkty
+POST /api/auth/logout
+addItem(product3)
+
+# 6. Zaloguj
+POST /api/auth/login
+
+# 7. Sprawdź
+GET /api/cart  → powinno zwrócić: product1, product2, product3
+```
+
+---
+
+## Powiązane pliki (nie przeanalizowane, ale istotne)
+
+- `lib/db.ts` — Prisma client
+- `lib/validations/auth.ts` — schema walidacji
+- `app/api/cart/route.ts` — GET /api/cart endpoint
+- `types/index.ts` — definicje CartCookieItem, CartLineItem
+- `app/(shop)/cart/page.tsx` — strona koszyka
+
+---
+
+**Wersja**: 1.0  
+**Data**: 2026-10-06  
+**Status**: ✅ Gotowe do analizy
+
+````
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-haiku-4-5-20251001)**_
+
+<tool-use data-tool-type="generic" data-tool-name="memory"><details>
+<summary>Tool use: **memory**</summary>
+
+Updated memory file `progress.md`
+
+**Input:**
+
+- command: `str_replace`
+- new_str:
+
+```
+# Session Progress
+
+## Completed Tasks
+- ✅ Phase 1 flow analysis (guest single product)
+- ✅ Phase 2 analysis (multi-phase with quantity verification)  
+- ✅ Initial code file identification via grep
+- ✅ Deep code analysis — 9 API/hook files read
+- ✅ Complete source code mapping saved to file
+
+## Current Work
+- ✅ DONE — Code analysis complete
+
+## Key Findings
+- mergeGuestCart() uses Math.max for existing items
+- localStorage is REPLACED (clearCart), not merged
+- DB preserves all items across logout cycles
+- Merge is triggered by isLoggedIn state change in useCart hook
+```
+
+- old_str:
+
+```
+# Session Progress
+
+## Completed Tasks
+- ✅ Phase 1 flow analysis (guest single product)
+- ✅ Phase 2 analysis (multi-phase with quantity verification)  
+- ✅ Initial code file identification via grep
+
+## Current Work
+- 🔄 Complete source code mapping
+```
+
+- path: `/memories/session/progress.md`
+
+**Result:**
+
+```
+The path /memories/session/progress.md does not exist. Please provide a valid path.
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-haiku-4-5-20251001)**_
+
+<tool-use data-tool-type="generic" data-tool-name="memory"><details>
+<summary>Tool use: **memory**</summary>
+
+Created memory file `progress.md`
+
+**Input:**
+
+- command: `create`
+- file_text:
+
+```
+# Session Progress — Multi-phase Guest Cart Analysis
+
+**Status**: ✅ COMPLETE
+
+## Completed Tasks
+- ✅ Phase 1 flow analysis (guest single product)
+- ✅ Phase 2 analysis (multi-phase with quantity verification)  
+- ✅ Initial code file identification via grep (13+30 matches)
+- ✅ Deep code analysis — 9 API/hook files read
+- ✅ Complete source code mapping (4 phases mapped to code)
+- ✅ Code analysis saved to [notatki/2026-10-06-source-code-map-guest-cart.md](../../notatki/2026-10-06-source-code-map-guest-cart.md)
+
+## Key Findings
+
+### Storage Strategy
+- **localStorage**: REPLACED on logout (not merged)
+  - clearCart() called after mergeGuestCart()
+  - New guest items overwrite old ones
+  
+- **Database**: PERSISTENT across logout cycles
+  - Products added in Phase 1 remain after logout
+  - Phase 3b new products merge with Phase 1 on re-login
+
+### Merge Logic
+- `mergeGuestCart()` in [lib/actions/cart.ts](../../lib/actions/cart.ts#L96)
+- Uses `Math.max(existing.quantity, item.quantity)` for conflicts
+- New items are created if not in DB
+- BR-01: Max 5 different products per account
+
+### Trigger
+- isLoggedIn state change in useCart hook ([hooks/useCart.ts](../../hooks/useCart.ts#L69))
+- Effect runs when isLoggedIn becomes true
+- Async, ~3-5s delay for data loading
+
+## Files Analyzed
+1. ✅ store/cart.ts — Zustand store (localStorage)
+2. ✅ hooks/useCart.ts — Main hook (state management)
+3. ✅ components/products/AddToCartButton.tsx — UI component
+4. ✅ app/api/auth/login/route.ts — Login + setSession
+5. ✅ app/api/auth/logout/route.ts — Logout + clearSession
+6. ✅ lib/actions/cart.ts — mergeGuestCart + DB actions
+7. ✅ components/layout/LogoutButton.tsx — Logout UI
+8. ✅ app/(auth)/login/page.tsx — Login form
+9. ✅ lib/session.ts — Session helpers (not fully read)
+
+## Output Generated
+- File: [notatki/2026-10-06-source-code-map-guest-cart.md](../../notatki/2026-10-06-source-code-map-guest-cart.md)
+- Format: Detailed code mapping with diagrams, code snippets, and flow charts
+- Content: 4-phase breakdown, symbol mapping, storage strategy, test validation steps
+
+---
+**Session Date**: 2026-10-06  
+**Agent**: GitHub Copilot  
+**Context**: ShopEasy (Next.js 16 + React 19 + Prisma)
+
+```
+
+- path: `/memories/session/progress.md`
+
+**Result:**
+
+```
+File created successfully at: /memories/session/progress.md
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-haiku-4-5-20251001)**_
+
+✅ **Zrobione!** 
+
+Przygotowałem kompletną mapę kodu źródłowego dla scenariusza multi-phase guest cart. Plik `notatki/2026-10-06-source-code-map-guest-cart.md` zawiera:
+
+### 📋 Co się znalazło:
+
+1. **Krok 1** — Dodanie produktów (gość)
+   -  →  →  → localStorage ✅
+
+2. **Krok 2** — Zalogowanie
+   - `/api/auth/login` →  → Hook effect →  →  ✅
+
+3. **Krok 3** — Wylogowanie + nowe produkty
+   - `/api/auth/logout` → localStorage REPLACED (nie merged) ⚠️
+
+4. **Krok 4** — Zalogowanie ponownie
+   - Merge produktów z localStorage do bazy → **17 szt. razem** ✅
+
+### 🔑 Kluczowe odkrycie:
+- localStorage jest **CZYSZCZONY** (clearCart) po merge, nie scalany
+- Baza danych **PRZECHOWUJE** wszystkie produkty
+- Produkty z fazy 1 oraz fazy 3 łączą się w fazie 4 dzięki temu podziałowi
+
+Analiza zawiera również:
+- Kod źródłowy fragmentów kluczowych funkcji
+- Diagram przepływu danych
+- Mapę symboli (13 komponenty/hooków/akcji)
+- Uwagi techniczne (Math.max, BR-01 limit, asynchroniczność)
+- Kroki do walidacji (test commands)
+
+---
+
+_**User (2026-10-06 08:30:59Z)**_
+
+/create-prompt analiza-przepływu-danych
+
+- nie wklejaj fragmentów kodu, ani pseudokodu - linkuj do pliku
+- dla każdego kroku usera
+   - ekran / url / wywołanie api / akcja / ...  - krótko co sie dzieje
+   - link do pliku 
+      - funkcja/klasa/komponent - linia - krótki opis co sie dzieje
+      - ...
+   - ... 
+   - diagram przepływu / komunikacji mermaid dla tego kroku
+
+bez mapy symboli
+bez mapy typów
+bez storage strategy
+bez testu
+
+**Wersja**: 1.0
+**Data**: 2026-10-06
+**Status**: ✅ Gotowe do analizy
+
+
+
+
+---
+
+_**Agent (anthropic/Anthropic/claude-haiku-4-5-20251001)**_
+
+Przejrzę konwersację, aby wyodrębnić pattern analizy przepływu danych, a następnie utworzę reusable prompt.
+
+_**Agent (anthropic/Anthropic/claude-haiku-4-5-20251001)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `da572c20-25eb-4a58-a132-6659a7827511.jsonl`, lines 1 to 100
+
+**Input:**
+
+- endLine: `100`
+- filePath: `c:\Users\ev45i\AppData\Roaming\Code\User\workspaceStorage\8f9a641c5032c9d81353c0bec04f7a2b\GitHub.copilot-chat\transcripts\da572c20-25eb-4a58-a132-6659a7827511.jsonl`
+- startLine: `1`
+
+**Result:**
+
+```
+{"type":"session.start","data":{"sessionId":"da572c20-25eb-4a58-a132-6659a7827511","version":1,"producer":"copilot-agent","copilotVersion":"0.68.0","vscodeVersion":"1.140.0","startTime":"2026-10-06T08:01:11.801Z"},"id":"3c082497-7b23-47dc-bb2e-77fb830f01bf","timestamp":"2026-10-06T08:01:11.801Z","parentId":null}
+{"type":"assistant.message","data":{"messageId":"0c6cb734-7c75-4b28-8a24-cf6b41df7092","content":"Zaczynam analizę user flow: **Niezalogowany → Dodaj produkt do koszyka → Zaloguj → Produkt w koszyku**.\n\nNajpierw otwieram aplikację ShopEasy w przeglądarce.","toolRequests":[{"toolCallId":"toolu_01AHJrZ8otXrExovBzoujBeo","name":"open_browser_page","arguments":"{\"url\":\"http://127.0.0.1:3100\"}","type":"function"}],"reasoningText":"Użytkownik chce, aby analizowałem user flow w aplikacji ShopEasy. Parametry są wyraźnie podane:\n- **Ścieżka początkowa**: Niezalogowany użytkownik\n- **Kroki pośrednie**: \n  1. Dodaj produkt do koszyka\n  2. Zaloguj\n- **Końcowy stan**: Produkt jest w koszyku zalogowanego użytkownika\n\nMam prompt instrukcji, więc znam procedurę. Zacznę od:\n1. Otwarcia przeglądarki na http://127.0.0.1:3100\n2. Śledzenia przepływu: gość → dodaj produkt → logowanie → weryfikacja\n3. Dokumentacji każdego kroku\n4. Tworzenia diagramu Mermaid\n5. Podsumowania i zaproponowania zapisu\n\nZanim zacznę, powinnam sprawdzić czy aplikacja jest uruchomiona. Patrząc na kontekst, terminal pokazuje ostatnią komendę `npm run workshop:setup` z exit code 0, co sugeruje że aplikacja mogła być już uruchomiona wcześniej. Spróbuję otworzyć przeglądarkę i jeśli aplikacja nie będzie dostępna, uruchomię ją.\n\nZacznę od memory check - czytam pierwszą instrukcję."},"id":"e073b45a-f64c-417d-a09e-9a5ea18ae6b6","timestamp":"2026-10-06T08:01:17.309Z","parentId":"3c082497-7b23-47dc-bb2e-77fb830f01bf"}
+{"type":"assistant.turn_end","data":{"turnId":"0"},"id":"51601d2e-aa2b-41dc-82ff-b5271c9cc148","timestamp":"2026-10-06T08:01:17.309Z","parentId":"e073b45a-f64c-417d-a09e-9a5ea18
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-haiku-4-5-20251001)**_
+
+Przejrzałem konwersację. Wyodrębniam pattern analizy przepływu danych:
+
+**Core task**: Dla każdego kroku user flow w aplikacji, udokumentować:
+- Ekran/URL/API endpoint
+- Dotkniętych plików z linkami (bez kod snippetów)
+- Diagramy Mermaid pokazujące komunikację
+
+**Implicit inputs**: Kod aplikacji, zdefiniowana ścieżka użytkownika (kroki), struktura projektu
+
+**Output format**: Minimalistyczne - tylko przepływ danych, bez mapy symboli/typów/storage
+
+Tworzę `.prompt.md` do 
+
+Przejrzałem konwersację. Wyodrębniam pattern analizy przepływu danych:
+
+**Core task**: Dla każdego kroku user flow w aplikacji, udokumentować:
+- Ekran/URL/API endpoint
+- Dotkniętych plików z linkami (bez kod snippetów)
+- Diagramy Mermaid pokazujące komunikację
+
+**Implicit inputs**: Kod aplikacji, zdefiniowana ścieżka użytkownika (kroki), struktura projektu
+
+**Output format**: Minimalistyczne - tylko przepływ danych, bez mapy symboli/typów/storage
+
+Tworzę `.prompt.md` do workspace:
+
+_**Agent (anthropic/Anthropic/claude-haiku-4-5-20251001)**_
+
+<tool-use data-tool-type="write" data-tool-name="create_file"><details>
+<summary>Tool use: **create_file**</summary>
+
+Created `.prompt.md`
+
+**Input:**
+
+- content:
+
+````
+---
+name: analiza-przepływu-danych
+type: data-flow-analysis
+category: technical-documentation
+applyTo: ShopEasy
+version: 1.0
+date: 2026-10-06
+status: ✅ Gotowe do analizy
+---
+
+# Analiza Przepływu Danych
+
+Utwórz szczegółową analizę przepływu danych dla scenariusza użytkownika w aplikacji.
+
+## Input
+
+Scenariusz powinien zawierać:
+- **Ścieżka**: Sekwencja kroków użytkownika (np. niezalogowany → dodaj produkt → zaloguj → weryfikuj koszyk)
+- **Kod źródłowy**: Dostęp do plików projektu (komponenty, API, hooki, akcje serwera)
+- **Punkt startowy**: URL, ekran lub akcja początkowa
+
+## Procedura
+
+Dla **każdego kroku** w sekwencji:
+
+### 1. Zidentyfikuj Akcję
+- **Co się dzieje**: Krótko opisz akcję użytkownika lub system action
+  - Przykłady: klik na przycisk, submit formularza, API call, wyzwolenie hooka
+- **URL/Ekran**: Wskaż bieżący URL i widoczny stan UI
+- **Trigger**: Jakie zdarzenie wyzwoliło ten krok
+
+### 2. Mapuj Dotkniętych Pliki
+Dla każdego pliku zaangażowanego w ten krok:
+- **Ścieżka pliku**: Link markdown do pliku w workspace
+- **Symbol**: Nazwa funkcji/komponentu/metody (bez @ symboli)
+- **Linia**: Numer linii gdzie logika działa (jeśli dotyczy)
+- **Akcja**: Jedno zdanie co symbol robi
+
+**Format**:
+```
+- [path/to/file.tsx](path/to/file.tsx) 
+  - `SymbolName` (linia XX) — opis akcji
+```
+
+### 3. Rysuj Diagram Przepływu
+Dla każdego kroku utwórz diagram Mermaid pokazujący:
+- **Komunikacja**: Browser → Component → Hook → API/Server Action → Database
+- **Data flow**: Gdzie dane pochodzą, gdzie są przetwarzane, gdzie się trafią
+- **Asynchroniczność**: Zaznacz async boundaries (`await`, callbacks)
+
+**Struktura diagramu**:
+```mermaid
+graph TD
+    A[Browser Action] -->|event| B[React Component]
+    B -->|call| C[Hook useCart]
+    C -->|if logged in| D[Server Action]
+    C -->|if guest| E[Zustand Store]
+    D -->|Prisma| F[(Database)]
+    E -->|localStorage| G[Browser Storage]
+    F -->|JSON| H[Client State]
+    style D fill:#90EE90
+    style F fill:#FFB6C6
+```
+
+## Output
+
+Dokument powinien zawierać:
+
+- **Nagłówek**: Nazwa scenariusza, data, status
+- **Dla każdego kroku**:
+  - Numer kroku
+  - Krótki opis akcji
+  - Bieżący URL
+  - Tablica dotkniętych plików z linkami
+  - Diagram Mermaid przepływu danych
+- **Bez**: Map symboli, map typów, analiza storage strategy, instrukcje testów
+- **Format**: Markdown z linkami, nie wklejaj fragmentów kodu
+
+## Wyłączenia
+
+- ❌ Nie wklejaj pseudokodu ani fragmentów kodu źródłowego
+- ❌ Nie twórz ogólnych map (symbol map, type map, full dependency map)
+- ❌ Nie opisuj storage mechanizmów szczegółowo (localStorage vs DB) — tylko gdzie się dane trafią
+- ❌ Nie dodawaj instrukcji testów ani walidacji
+- ❌ Nie twórz long summaries — bądź zwięźle, linkuj zamiast parafrazować
+
+## Przykład Output
+
+```markdown
+# Analiza Przepływu Danych: Guest → Login → Cart
+
+## Krok 1: Niezalogowany — Dodaj produkt do koszyka
+
+**Akcja**: Klik "Dodaj do koszyka" na karcie produktu  
+**URL**: `http://127.0.0.1:3100`  
+**Trigger**: Click event na AddToCartButton
+
+### Dotkniętych pliki
+
+- [components/products/AddToCartButton.tsx](components/products/AddToCartButton.tsx)
+  - `AddToCartButton` (linia ~20) — onClick handler
+- [hooks/useCart.ts](hooks/useCart.ts)
+  - `useCart()` (linia ~22) — Hook
+  - `addItem()` (linia ~90-110) — Guest path logika
+- [store/cart.ts](store/cart.ts)
+  - `useCartStore` (linia ~23) — Zustand store
+  - `addItem()` (linia ~27) — localStorage sync
+
+### Diagram
+
+```mermaid
+graph LR
+    A["User clicks<br/>Add to Cart"] -->|ref onClick| B["AddToCartButton"]
+    B -->|useCart()| C["useCart Hook"]
+    C -->|isLoggedIn=false| D["guestAdd()"]
+    D -->|Zustand action| E["useCartStore"]
+    E -->|persist| F["localStorage<br/>shopeasy-guest-cart"]
+```
+
+## Krok 2: Zalogowanie
+
+**Akcja**: Submit formularza logowania  
+**URL**: `http://127.0.0.1:3100/login`  
+**Trigger**: Klik "Zaloguj się"
+
+### Dotkniętych pliki
+
+[... itd]
+```
+
+## Iteracja
+
+1. Przygotuj draft analizy dla pierwszego kroku
+2. Zidentyfikuj niedoróżwistości lub słabe punkty:
+   - Czy każdy diagram jest jasny?
+   - Czy każdy link prowadzi do istniejącego pliku?
+   - Czy opis akcji jest wystarczająco konkretny?
+3. Zapytaj użytkownika o umiejscowienie wątpliwości
+4. Zaktualizuj i ustabilizuj
+
+## Post-Analiza
+
+Kiedy analiza jest gotowa:
+- Zaproponuj zapis do pliku w katalogu `notatki/`
+- Zasugeruj powiązane analizy (np. error flows, performance flows, security flows)
+- Wskaż obszary, gdzie logika mogłaby być uproszczona lub zrefaktoryzowana
+
+````
+
+- filePath: `c:\Projects\infoshare-accenture-ai-dev-1\.prompt.md`
+
+**Result:**
+
+```
+The following files were successfully edited:
+c:\Projects\infoshare-accenture-ai-dev-1\.prompt.md
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-haiku-4-5-20251001)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **.prompt.md**</summary>
+
+@@ lines 1-1 @@
+
+````
+---
+name: analiza-przepływu-danych
+type: data-flow-analysis
+category: technical-documentation
+applyTo: ShopEasy
+version: 1.0
+date: 2026-10-06
+status: ✅ Gotowe do analizy
+---
+
+# Analiza Przepływu Danych
+
+Utwórz szczegółową analizę przepływu danych dla scenariusza użytkownika w aplikacji.
+
+## Input
+
+Scenariusz powinien zawierać:
+- **Ścieżka**: Sekwencja kroków użytkownika (np. niezalogowany → dodaj produkt → zaloguj → weryfikuj koszyk)
+- **Kod źródłowy**: Dostęp do plików projektu (komponenty, API, hooki, akcje serwera)
+- **Punkt startowy**: URL, ekran lub akcja początkowa
+
+## Procedura
+
+Dla **każdego kroku** w sekwencji:
+
+### 1. Zidentyfikuj Akcję
+- **Co się dzieje**: Krótko opisz akcję użytkownika lub system action
+  - Przykłady: klik na przycisk, submit formularza, API call, wyzwolenie hooka
+- **URL/Ekran**: Wskaż bieżący URL i widoczny stan UI
+- **Trigger**: Jakie zdarzenie wyzwoliło ten krok
+
+### 2. Mapuj Dotkniętych Pliki
+Dla każdego pliku zaangażowanego w ten krok:
+- **Ścieżka pliku**: Link markdown do pliku w workspace
+- **Symbol**: Nazwa funkcji/komponentu/metody (bez @ symboli)
+- **Linia**: Numer linii gdzie logika działa (jeśli dotyczy)
+- **Akcja**: Jedno zdanie co symbol robi
+
+**Format**:
+```
+- [path/to/file.tsx](path/to/file.tsx) 
+  - `SymbolName` (linia XX) — opis akcji
+```
+
+### 3. Rysuj Diagram Przepływu
+Dla każdego kroku utwórz diagram Mermaid pokazujący:
+- **Komunikacja**: Browser → Component → Hook → API/Server Action → Database
+- **Data flow**: Gdzie dane pochodzą, gdzie są przetwarzane, gdzie się trafią
+- **Asynchroniczność**: Zaznacz async boundaries (`await`, callbacks)
+
+**Struktura diagramu**:
+```mermaid
+graph TD
+    A[Browser Action] -->|event| B[React Component]
+    B -->|call| C[Hook useCart]
+    C -->|if logged in| D[Server Action]
+    C -->|if guest| E[Zustand Store]
+    D -->|Prisma| F[(Database)]
+    E -->|localStorage| G[Browser Storage]
+    F -->|JSON| H[Client State]
+    style D fill:#90EE90
+    style F fill:#FFB6C6
+```
+
+## Output
+
+Dokument powinien zawierać:
+
+- **Nagłówek**: Nazwa scenariusza, data, status
+- **Dla każdego kroku**:
+  - Numer kroku
+  - Krótki opis akcji
+  - Bieżący URL
+  - Tablica dotkniętych plików z linkami
+  - Diagram Mermaid przepływu danych
+- **Bez**: Map symboli, map typów, analiza storage strategy, instrukcje testów
+- **Format**: Markdown z linkami, nie wklejaj fragmentów kodu
+
+## Wyłączenia
+
+- ❌ Nie wklejaj pseudokodu ani fragmentów kodu źródłowego
+- ❌ Nie twórz ogólnych map (symbol map, type map, full dependency map)
+- ❌ Nie opisuj storage mechanizmów szczegółowo (localStorage vs DB) — tylko gdzie się dane trafią
+- ❌ Nie dodawaj instrukcji testów ani walidacji
+- ❌ Nie twórz long summaries — bądź zwięźle, linkuj zamiast parafrazować
+
+## Przykład Output
+
+```markdown
+# Analiza Przepływu Danych: Guest → Login → Cart
+
+## Krok 1: Niezalogowany — Dodaj produkt do koszyka
+
+**Akcja**: Klik "Dodaj do koszyka" na karcie produktu  
+**URL**: `http://127.0.0.1:3100`  
+**Trigger**: Click event na AddToCartButton
+
+### Dotkniętych pliki
+
+- [components/products/AddToCartButton.tsx](components/products/AddToCartButton.tsx)
+  - `AddToCartButton` (linia ~20) — onClick handler
+- [hooks/useCart.ts](hooks/useCart.ts)
+  - `useCart()` (linia ~22) — Hook
+  - `addItem()` (linia ~90-110) — Guest path logika
+- [store/cart.ts](store/cart.ts)
+  - `useCartStore` (linia ~23) — Zustand store
+  - `addItem()` (linia ~27) — localStorage sync
+
+### Diagram
+
+```mermaid
+graph LR
+    A["User clicks<br/>Add to Cart"] -->|ref onClick| B["AddToCartButton"]
+    B -->|useCart()| C["useCart Hook"]
+    C -->|isLoggedIn=false| D["guestAdd()"]
+    D -->|Zustand action| E["useCartStore"]
+    E -->|persist| F["localStorage<br/>shopeasy-guest-cart"]
+```
+
+## Krok 2: Zalogowanie
+
+**Akcja**: Submit formularza logowania  
+**URL**: `http://127.0.0.1:3100/login`  
+**Trigger**: Klik "Zaloguj się"
+
+### Dotkniętych pliki
+
+[... itd]
+```
+
+## Iteracja
+
+1. Przygotuj draft analizy dla pierwszego kroku
+2. Zidentyfikuj niedoróżwistości lub słabe punkty:
+   - Czy każdy diagram jest jasny?
+   - Czy każdy link prowadzi do istniejącego pliku?
+   - Czy opis akcji jest wystarczająco konkretny?
+3. Zapytaj użytkownika o umiejscowienie wątpliwości
+4. Zaktualizuj i ustabilizuj
+
+## Post-Analiza
+
+Kiedy analiza jest gotowa:
+- Zaproponuj zapis do pliku w katalogu `notatki/`
+- Zasugeruj powiązane analizy (np. error flows, performance flows, security flows)
+- Wskaż obszary, gdzie logika mogłaby być uproszczona lub zrefaktoryzowana
+
+````
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-haiku-4-5-20251001)**_
+
+✅ **Stworzyłem reusable prompt** dla analizy przepływu danych.
+
+Plik: `.prompt.md`
+
+### Co zawiera prompt
+
+- **Procedura**: Jak analizować przepływ danych dla każdego kroku
+- **Input/Output**: Jasne wymogi (bez code snippets, z linkami i diagramami Mermaid)
+- **Format**: Standardowy template Markdown
+- **Wyłączenia**: Co NIE powinno być w analizie (mapy symboli, storage strategy, testy)
+- **Przykład**: Demonstracja output format dla 2 kroków
+- **Iteracja**: Jak refine'ować análize w oparciu o feedback
+
+### Exemplary Invocations
+
+Prompt może być użyty dla różnych scenariuszy w ShopEasy:
+
+```
+"Przeprowadź analizę przepływu danych dla scenariusza:
+Gość loguje się → Koszyk gościa jest scalany → Użytkownik widzi produkt"
+```
+
+```
+"Analiza przepływu: Checkout — 3 kroki (delivery → payment → confirmation)"
+```
+
+```
+"Data flow: Logout → localStorage clear → Guest cart disabled"
+```
+
+### Powiązane Customizations
+
+Mogę utworzyć dodatkowe prompty dla:
+- **analiza-error-flows** — błędy i path exceptions w przepływach
+- **analiza-performance** — bottlenecks w data communication
+- **analiza-security** — authentication/authorization checkpoints
+
+---
+
+Czy prompt spełnia Twoje wymagania, czy chcesz zmienić:
+- Strukturę kroków?
+- Wymagania dla diagramów Mermaid?
+- Przykład output?
+
+---
+
+_**User (2026-10-06 08:32:18Z)**_
+
+prompt nie ma nazwy i jest w złym katalogu
+
+---
+
+_**Agent (anthropic/Anthropic/claude-haiku-4-5-20251001)**_
+
+Masz rację! Przeniosę prompt do właściwego katalogu z odpowiednią nazwą.
+
+_**Agent (anthropic/Anthropic/claude-haiku-4-5-20251001)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `.prompt.md`
+
+**Input:**
+
+- endLine: `200`
+- filePath: `c:\Projects\infoshare-accenture-ai-dev-1\.prompt.md`
+- startLine: `1`
+
+**Result:**
+
+````
+---
+name: analiza-przepływu-danych
+type: data-flow-analysis
+category: technical-documentation
+applyTo: ShopEasy
+version: 1.0
+date: 2026-10-06
+status: ✅ Gotowe do analizy
+---
+
+# Analiza Przepływu Danych
+
+Utwórz szczegółową analizę przepływu danych dla scenariusza użytkownika w aplikacji.
+
+## Input
+
+Scenariusz powinien zawierać:
+- **Ścieżka**: Sekwencja kroków użytkownika (np. niezalogowany → dodaj produkt → zaloguj → weryfikuj koszyk)
+- **Kod źródłowy**: Dostęp do plików projektu (komponenty, API, hooki, akcje serwera)
+- **Punkt startowy**: URL, ekran lub akcja początkowa
+
+## Procedura
+
+Dla **każdego kroku** w sekwencji:
+
+### 1. Zidentyfikuj Akcję
+- **Co się dzieje**: Krótko opisz akcję użytkownika lub system action
+  - Przykłady: klik na przycisk, submit formularza, API call, wyzwolenie hooka
+- **URL/Ekran**: Wskaż bieżący URL i widoczny stan UI
+- **Trigger**: Jakie zdarzenie wyzwoliło ten krok
+
+### 2. Mapuj Dotkniętych Pliki
+Dla każdego pliku zaangażowanego w ten krok:
+- **Ścieżka pliku**: Link markdown do pliku w workspace
+- **Symbol**: Nazwa funkcji/komponentu/metody (bez @ symboli)
+- **Linia**: Numer linii gdzie logika działa (jeśli dotyczy)
+- **Akcja**: Jedno zdanie co symbol robi
+
+**Format**:
+```
+- [path/to/file.tsx](path/to/file.tsx) 
+  - `SymbolName` (linia XX) — opis akcji
+```
+
+### 3. Rysuj Diagram Przepływu
+Dla każdego kroku utwórz diagram Mermaid pokazujący:
+- **Komunikacja**: Browser → Component → Hook → API/Server Action → Database
+- **Data flow**: Gdzie dane pochodzą, gdzie są przetwarzane, gdzie się trafią
+- **Asynchroniczność**: Zaznacz async boundaries (`await`, callbacks)
+
+**Struktura diagramu**:
+```mermaid
+graph TD
+    A[Browser Action] -->|event| B[React Component]
+    B -->|call| C[Hook useCart]
+    C -->|if logged in| D[Server Action]
+    C -->|if guest| E[Zustand Store]
+    D -->|Prisma| F[(Database)]
+    E -->|localStorage| G[Browser Storage]
+    F -->|JSON| H[Client State]
+    style
+… (output truncated)
+````
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-haiku-4-5-20251001)**_
+
+<tool-use data-tool-type="write" data-tool-name="create_file"><details>
+<summary>Tool use: **create_file**</summary>
+
+Created `analiza-przepływu-danych.md`
+
+**Input:**
+
+- content:
+
+````
+---
+name: analiza-przepływu-danych
+type: data-flow-analysis
+category: technical-documentation
+applyTo: ShopEasy
+version: 1.0
+date: 2026-10-06
+status: ✅ Gotowe do analizy
+---
+
+# Analiza Przepływu Danych
+
+Utwórz szczegółową analizę przepływu danych dla scenariusza użytkownika w aplikacji.
+
+## Input
+
+Scenariusz powinien zawierać:
+- **Ścieżka**: Sekwencja kroków użytkownika (np. niezalogowany → dodaj produkt → zaloguj → weryfikuj koszyk)
+- **Kod źródłowy**: Dostęp do plików projektu (komponenty, API, hooki, akcje serwera)
+- **Punkt startowy**: URL, ekran lub akcja początkowa
+
+## Procedura
+
+Dla **każdego kroku** w sekwencji:
+
+### 1. Zidentyfikuj Akcję
+- **Co się dzieje**: Krótko opisz akcję użytkownika lub system action
+  - Przykłady: klik na przycisk, submit formularza, API call, wyzwolenie hooka
+- **URL/Ekran**: Wskaż bieżący URL i widoczny stan UI
+- **Trigger**: Jakie zdarzenie wyzwoliło ten krok
+
+### 2. Mapuj Dotkniętych Pliki
+Dla każdego pliku zaangażowanego w ten krok:
+- **Ścieżka pliku**: Link markdown do pliku w workspace
+- **Symbol**: Nazwa funkcji/komponentu/metody (bez @ symboli)
+- **Linia**: Numer linii gdzie logika działa (jeśli dotyczy)
+- **Akcja**: Jedno zdanie co symbol robi
+
+**Format**:
+```
+- [path/to/file.tsx](path/to/file.tsx) 
+  - `SymbolName` (linia XX) — opis akcji
+```
+
+### 3. Rysuj Diagram Przepływu
+Dla każdego kroku utwórz diagram Mermaid pokazujący:
+- **Komunikacja**: Browser → Component → Hook → API/Server Action → Database
+- **Data flow**: Gdzie dane pochodzą, gdzie są przetwarzane, gdzie się trafią
+- **Asynchroniczność**: Zaznacz async boundaries (`await`, callbacks)
+
+**Struktura diagramu**:
+```mermaid
+graph TD
+    A[Browser Action] -->|event| B[React Component]
+    B -->|call| C[Hook useCart]
+    C -->|if logged in| D[Server Action]
+    C -->|if guest| E[Zustand Store]
+    D -->|Prisma| F[(Database)]
+    E -->|localStorage| G[Browser Storage]
+    F -->|JSON| H[Client State]
+    style D fill:#90EE90
+    style F fill:#FFB6C6
+```
+
+## Output
+
+Dokument powinien zawierać:
+
+- **Nagłówek**: Nazwa scenariusza, data, status
+- **Dla każdego kroku**:
+  - Numer kroku
+  - Krótki opis akcji
+  - Bieżący URL
+  - Tablica dotkniętych plików z linkami
+  - Diagram Mermaid przepływu danych
+- **Bez**: Map symboli, map typów, analiza storage strategy, instrukcje testów
+- **Format**: Markdown z linkami, nie wklejaj fragmentów kodu
+
+## Wyłączenia
+
+- ❌ Nie wklejaj pseudokodu ani fragmentów kodu źródłowego
+- ❌ Nie twórz ogólnych map (symbol map, type map, full dependency map)
+- ❌ Nie opisuj storage mechanizmów szczegółowo (localStorage vs DB) — tylko gdzie się dane trafią
+- ❌ Nie dodawaj instrukcji testów ani walidacji
+- ❌ Nie twórz long summaries — bądź zwięźle, linkuj zamiast parafrazować
+
+## Przykład Output
+
+```markdown
+# Analiza Przepływu Danych: Guest → Login → Cart
+
+## Krok 1: Niezalogowany — Dodaj produkt do koszyka
+
+**Akcja**: Klik "Dodaj do koszyka" na karcie produktu  
+**URL**: `http://127.0.0.1:3100`  
+**Trigger**: Click event na AddToCartButton
+
+### Dotkniętych pliki
+
+- [components/products/AddToCartButton.tsx](components/products/AddToCartButton.tsx)
+  - `AddToCartButton` (linia ~20) — onClick handler
+- [hooks/useCart.ts](hooks/useCart.ts)
+  - `useCart()` (linia ~22) — Hook
+  - `addItem()` (linia ~90-110) — Guest path logika
+- [store/cart.ts](store/cart.ts)
+  - `useCartStore` (linia ~23) — Zustand store
+  - `addItem()` (linia ~27) — localStorage sync
+
+### Diagram
+
+\`\`\`mermaid
+graph LR
+    A["User clicks<br/>Add to Cart"] -->|ref onClick| B["AddToCartButton"]
+    B -->|useCart()| C["useCart Hook"]
+    C -->|isLoggedIn=false| D["guestAdd()"]
+    D -->|Zustand action| E["useCartStore"]
+    E -->|persist| F["localStorage<br/>shopeasy-guest-cart"]
+\`\`\`
+
+## Krok 2: Zalogowanie
+
+**Akcja**: Submit formularza logowania  
+**URL**: `http://127.0.0.1:3100/login`  
+**Trigger**: Klik "Zaloguj się"
+
+### Dotkniętych pliki
+
+[... itd]
+```
+
+## Iteracja
+
+1. Przygotuj draft analizy dla pierwszego kroku
+2. Zidentyfikuj niedoróżwistości lub słabe punkty:
+   - Czy każdy diagram jest jasny?
+   - Czy każdy link prowadzi do istniejącego pliku?
+   - Czy opis akcji jest wystarczająco konkretny?
+3. Zapytaj użytkownika o umiejscowienie wątpliwości
+4. Zaktualizuj i ustabilizuj
+
+## Post-Analiza
+
+Kiedy analiza jest gotowa:
+- Zaproponuj zapis do pliku w katalogu `notatki/`
+- Zasugeruj powiązane analizy (np. error flows, performance flows, security flows)
+- Wskaż obszary, gdzie logika mogłaby być uproszczona lub zrefaktoryzowana
+
+````
+
+- filePath: `c:\Users\ev45i\AppData\Roaming\Code\User\prompts\analiza-przepływu-danych.md`
+
+**Result:**
+
+```
+The following files were successfully edited:
+c:\Users\ev45i\AppData\Roaming\Code\User\prompts\analiza-przepływu-danych.md
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-haiku-4-5-20251001)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **analiza-przepływu-danych.md**</summary>
+
+@@ lines 1-1 @@
+
+````
+---
+name: analiza-przepływu-danych
+type: data-flow-analysis
+category: technical-documentation
+applyTo: ShopEasy
+version: 1.0
+date: 2026-10-06
+status: ✅ Gotowe do analizy
+---
+
+# Analiza Przepływu Danych
+
+Utwórz szczegółową analizę przepływu danych dla scenariusza użytkownika w aplikacji.
+
+## Input
+
+Scenariusz powinien zawierać:
+- **Ścieżka**: Sekwencja kroków użytkownika (np. niezalogowany → dodaj produkt → zaloguj → weryfikuj koszyk)
+- **Kod źródłowy**: Dostęp do plików projektu (komponenty, API, hooki, akcje serwera)
+- **Punkt startowy**: URL, ekran lub akcja początkowa
+
+## Procedura
+
+Dla **każdego kroku** w sekwencji:
+
+### 1. Zidentyfikuj Akcję
+- **Co się dzieje**: Krótko opisz akcję użytkownika lub system action
+  - Przykłady: klik na przycisk, submit formularza, API call, wyzwolenie hooka
+- **URL/Ekran**: Wskaż bieżący URL i widoczny stan UI
+- **Trigger**: Jakie zdarzenie wyzwoliło ten krok
+
+### 2. Mapuj Dotkniętych Pliki
+Dla każdego pliku zaangażowanego w ten krok:
+- **Ścieżka pliku**: Link markdown do pliku w workspace
+- **Symbol**: Nazwa funkcji/komponentu/metody (bez @ symboli)
+- **Linia**: Numer linii gdzie logika działa (jeśli dotyczy)
+- **Akcja**: Jedno zdanie co symbol robi
+
+**Format**:
+```
+- [path/to/file.tsx](path/to/file.tsx) 
+  - `SymbolName` (linia XX) — opis akcji
+```
+
+### 3. Rysuj Diagram Przepływu
+Dla każdego kroku utwórz diagram Mermaid pokazujący:
+- **Komunikacja**: Browser → Component → Hook → API/Server Action → Database
+- **Data flow**: Gdzie dane pochodzą, gdzie są przetwarzane, gdzie się trafią
+- **Asynchroniczność**: Zaznacz async boundaries (`await`, callbacks)
+
+**Struktura diagramu**:
+```mermaid
+graph TD
+    A[Browser Action] -->|event| B[React Component]
+    B -->|call| C[Hook useCart]
+    C -->|if logged in| D[Server Action]
+    C -->|if guest| E[Zustand Store]
+    D -->|Prisma| F[(Database)]
+    E -->|localStorage| G[Browser Storage]
+    F -->|JSON| H[Client State]
+    style D fill:#90EE90
+    style F fill:#FFB6C6
+```
+
+## Output
+
+Dokument powinien zawierać:
+
+- **Nagłówek**: Nazwa scenariusza, data, status
+- **Dla każdego kroku**:
+  - Numer kroku
+  - Krótki opis akcji
+  - Bieżący URL
+  - Tablica dotkniętych plików z linkami
+  - Diagram Mermaid przepływu danych
+- **Bez**: Map symboli, map typów, analiza storage strategy, instrukcje testów
+- **Format**: Markdown z linkami, nie wklejaj fragmentów kodu
+
+## Wyłączenia
+
+- ❌ Nie wklejaj pseudokodu ani fragmentów kodu źródłowego
+- ❌ Nie twórz ogólnych map (symbol map, type map, full dependency map)
+- ❌ Nie opisuj storage mechanizmów szczegółowo (localStorage vs DB) — tylko gdzie się dane trafią
+- ❌ Nie dodawaj instrukcji testów ani walidacji
+- ❌ Nie twórz long summaries — bądź zwięźle, linkuj zamiast parafrazować
+
+## Przykład Output
+
+```markdown
+# Analiza Przepływu Danych: Guest → Login → Cart
+
+## Krok 1: Niezalogowany — Dodaj produkt do koszyka
+
+**Akcja**: Klik "Dodaj do koszyka" na karcie produktu  
+**URL**: `http://127.0.0.1:3100`  
+**Trigger**: Click event na AddToCartButton
+
+### Dotkniętych pliki
+
+- [components/products/AddToCartButton.tsx](components/products/AddToCartButton.tsx)
+  - `AddToCartButton` (linia ~20) — onClick handler
+- [hooks/useCart.ts](hooks/useCart.ts)
+  - `useCart()` (linia ~22) — Hook
+  - `addItem()` (linia ~90-110) — Guest path logika
+- [store/cart.ts](store/cart.ts)
+  - `useCartStore` (linia ~23) — Zustand store
+  - `addItem()` (linia ~27) — localStorage sync
+
+### Diagram
+
+\`\`\`mermaid
+graph LR
+    A["User clicks<br/>Add to Cart"] -->|ref onClick| B["AddToCartButton"]
+    B -->|useCart()| C["useCart Hook"]
+    C -->|isLoggedIn=false| D["guestAdd()"]
+    D -->|Zustand action| E["useCartStore"]
+    E -->|persist| F["localStorage<br/>shopeasy-guest-cart"]
+\`\`\`
+
+## Krok 2: Zalogowanie
+
+**Akcja**: Submit formularza logowania  
+**URL**: `http://127.0.0.1:3100/login`  
+**Trigger**: Klik "Zaloguj się"
+
+### Dotkniętych pliki
+
+[... itd]
+```
+
+## Iteracja
+
+1. Przygotuj draft analizy dla pierwszego kroku
+2. Zidentyfikuj niedoróżwistości lub słabe punkty:
+   - Czy każdy diagram jest jasny?
+   - Czy każdy link prowadzi do istniejącego pliku?
+   - Czy opis akcji jest wystarczająco konkretny?
+3. Zapytaj użytkownika o umiejscowienie wątpliwości
+4. Zaktualizuj i ustabilizuj
+
+## Post-Analiza
+
+Kiedy analiza jest gotowa:
+- Zaproponuj zapis do pliku w katalogu `notatki/`
+- Zasugeruj powiązane analizy (np. error flows, performance flows, security flows)
+- Wskaż obszary, gdzie logika mogłaby być uproszczona lub zrefaktoryzowana
+
+````
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-haiku-4-5-20251001)**_
+
+✅ **Przeniosłem prompt do właściwej lokalizacji:**
+
+**Przed**: `.prompt.md` (zły katalog)
+
+**Po**: `analiza-przepływu-danych.md` (✅ poprawny katalog)
+
+Prompt jest teraz dostępny w VS Code User Prompts folder i będzie widoczny w prompt selectora.
+
+Możesz usunąć stary plik z katalogu projektu (`.prompt.md`).
+
+---
+
+_**User (2026-10-06 08:35:03Z)**_
+
+popraw prompt:
+
+zamień diagram przepływu użyj diagramu komunikacji UML mermaid
+
+zaproponuj zapisz do /notatki i format <data>-<nazwa-prezplydu>-kod.md
+
+---
+
+_**Agent (anthropic/Anthropic/claude-haiku-4-5-20251001)**_
+
+<tool-use data-tool-type="generic" data-tool-name="replace_string_in_file"><details>
+<summary>Tool use: **replace_string_in_file**</summary>
+
+**Input:**
+
+- filePath: `c:\Users\ev45i\AppData\Roaming\Code\User\prompts\analiza-przepływu-danych.md`
+- newString:
+
+````
+### 3. Rysuj Diagram Komunikacji UML
+Dla każdego kroku utwórz diagram komunikacji Mermaid pokazujący:
+- **Sekwencja**: Kolejność komunikacji między aktorami (User, Browser, Component, Hook, API, Database)
+- **Async/Await**: Zaznacz async calls (`async`, `await`) i callbacks
+- **Data flow**: Jakie dane wysyłane (request/response)
+
+**Struktura diagramu**:
+```mermaid
+sequenceDiagram
+    actor User
+    participant Browser as 🌐 Browser
+    participant Component as ⚛️ Component
+    participant Hook as 🪝 Hook useCart
+    participant Store as 📦 Zustand Store
+    participant API as 🔌 API/Server Action
+    participant DB as 🗄️ Database
+
+    User->>Browser: Click "Add to Cart"
+    Browser->>Component: onClick event
+    Component->>Hook: addItem(product)
+    alt isLoggedIn = true
+        Hook->>API: await addToDbCart()
+        API->>DB: INSERT cartItem
+        DB-->>API: success
+        API-->>Hook: { success: true }
+    else isLoggedIn = false
+        Hook->>Store: guestAdd()
+        Store->>Browser: localStorage update
+        Browser-->>Store: persist
+    end
+    Hook-->>Component: { success: true }
+    Component-->>User: toast "Dodano do koszyka"
+```
+````
+
+- oldString:
+
+````
+### 3. Rysuj Diagram Przepływu
+Dla każdego kroku utwórz diagram Mermaid pokazujący:
+- **Komunikacja**: Browser → Component → Hook → API/Server Action → Database
+- **Data flow**: Gdzie dane pochodzą, gdzie są przetwarzane, gdzie się trafią
+- **Asynchroniczność**: Zaznacz async boundaries (`await`, callbacks)
+
+**Struktura diagramu**:
+```mermaid
+graph TD
+    A[Browser Action] -->|event| B[React Component]
+    B -->|call| C[Hook useCart]
+    C -->|if logged in| D[Server Action]
+    C -->|if guest| E[Zustand Store]
+    D -->|Prisma| F[(Database)]
+    E -->|localStorage| G[Browser Storage]
+    F -->|JSON| H[Client State]
+    style D fill:#90EE90
+    style F fill:#FFB6C6
+```
+````
+
+
+**Result:**
+
+```
+The following files were successfully edited:
+c:\Users\ev45i\AppData\Roaming\Code\User\prompts\analiza-przepływu-danych.md
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-haiku-4-5-20251001)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **analiza-przepływu-danych.md**</summary>
+
+@@ lines 45-62 @@
+
+````
+Komunikacji UML
+Dla każdego kroku utwórz diagram komunikacji Mermaid pokazujący:
+- **Sekwencja**: Kolejność komunikacji między aktorami (User, Browser, Component, Hook, API, Database)
+- **Async/Await**: Zaznacz async calls (`async`, `await`) i callbacks
+- **Data flow**: Jakie dane wysyłane (request/response)
+
+**Struktura diagramu**:
+```mermaid
+sequenceDiagram
+    actor User
+    participant Browser as 🌐 Browser
+    participant Component as ⚛️ Component
+    participant Hook as 🪝 Hook useCart
+    participant Store as 📦 Zustand Store
+    participant API as 🔌 API/Server Action
+    participant DB as 🗄️ Database
+
+    User->>Browser: Click "Add to Cart"
+    Browser->>Component: onClick event
+    Component->>Hook: addItem(product)
+    alt isLoggedIn = true
+        Hook->>API: await addToDbCart()
+        API->>DB: INSERT cartItem
+        DB-->>API: success
+        API-->>Hook: { success: true }
+    else isLoggedIn = false
+        Hook->>Store: guestAdd()
+        Store->>Browser: localStorage update
+        Browser-->>Store: persist
+    end
+    Hook-->>Component: { success: true }
+    Component-->>User: toast "Dodano do koszyka"
+````
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-haiku-4-5-20251001)**_
+
+<tool-use data-tool-type="generic" data-tool-name="replace_string_in_file"><details>
+<summary>Tool use: **replace_string_in_file**</summary>
+
+**Input:**
+
+- filePath: `c:\Users\ev45i\AppData\Roaming\Code\User\prompts\analiza-przepływu-danych.md`
+- newString:
+
+```
+### Diagram Komunikacji UML
+
+\`\`\`mermaid
+sequenceDiagram
+    actor User
+    participant Browser as 🌐 Browser
+    participant AddToCartButton as ⚛️ AddToCartButton
+    participant Hook as 🪝 useCart
+    participant Store as 📦 useCartStore
+    
+    User->>Browser: Click "Dodaj do koszyka"
+    Browser->>AddToCartButton: onClick
+    AddToCartButton->>Hook: addItem(product)
+    Hook->>Store: guestAdd()
+    Store->>Browser: localStorage persist
+    Browser-->>User: toast "Dodano do koszyka"
+\`\`\`
+```
+
+- oldString:
+
+```
+### Diagram
+
+\`\`\`mermaid
+graph LR
+    A["User clicks<br/>Add to Cart"] -->|ref onClick| B["AddToCartButton"]
+    B -->|useCart()| C["useCart Hook"]
+    C -->|isLoggedIn=false| D["guestAdd()"]
+    D -->|Zustand action| E["useCartStore"]
+    E -->|persist| F["localStorage<br/>shopeasy-guest-cart"]
+\`\`\`
+```
+
+
+**Result:**
+
+```
+The following files were successfully edited:
+c:\Users\ev45i\AppData\Roaming\Code\User\prompts\analiza-przepływu-danych.md
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-haiku-4-5-20251001)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **analiza-przepływu-danych.md**</summary>
+
+@@ lines 123-131 @@
+
+```
+ Komunikacji UML
+
+\`\`\`mermaid
+sequenceDiagram
+    actor User
+    participant Browser as 🌐 Browser
+    participant AddToCartButton as ⚛️ AddToCartButton
+    participant Hook as 🪝 useCart
+    participant Store as 📦 useCartStore
+    
+    User->>Browser: Click "Dodaj do koszyka"
+    Browser->>AddToCartButton: onClick
+    AddToCartButton->>Hook: addItem(product)
+    Hook->>Store: guestAdd()
+    Store->>Browser: localStorage persist
+    Browser-->>User: toast "Dodano do koszyka"
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-haiku-4-5-20251001)**_
+
+<tool-use data-tool-type="generic" data-tool-name="replace_string_in_file"><details>
+<summary>Tool use: **replace_string_in_file**</summary>
+
+**Input:**
+
+- filePath: `c:\Users\ev45i\AppData\Roaming\Code\User\prompts\analiza-przepływu-danych.md`
+- newString:
+
+```
+## Post-Analiza
+
+Kiedy analiza jest gotowa:
+
+1. **Zaproponuj zapis do pliku**:
+   - **Katalog**: `/notatki/`
+   - **Format**: `YYYY-MM-DD-<nazwa-przepływu>-kod.md`
+   - **Przykłady**:
+     - `2026-10-06-guest-to-login-cart-kod.md`
+     - `2026-10-06-checkout-multistep-kod.md`
+     - `2026-10-06-logout-session-clear-kod.md`
+   
+2. **Strukturuj zawartość**:
+   - Nagłówek (scenariusz, data)
+   - Diagram komunikacji UML (na początek)
+   - Dla każdego kroku: akcja + URL + pliki + mini-diagram
+   
+3. **Zasugeruj rozszerzenia**:
+   - Error flows (wyjątki, błędy)
+   - Performance flows (bottlenecks)
+   - Security flows (auth checkpoints)
+   - Alternative paths (user cancels, timeout, etc.)
+   
+4. **Refactoring hints**:
+   - Gdzie logika mogłaby być uproszczona
+   - Potencjalne race conditions
+   - Miejsca do optymalizacji async/await
+```
+
+- oldString:
+
+```
+## Post-Analiza
+
+Kiedy analiza jest gotowa:
+- Zaproponuj zapis do pliku w katalogu `notatki/`
+- Zasugeruj powiązane analizy (np. error flows, performance flows, security flows)
+- Wskaż obszary, gdzie logika mogłaby być uproszczona lub zrefaktoryzowana
+```
+
+
+**Result:**
+
+```
+The following files were successfully edited:
+c:\Users\ev45i\AppData\Roaming\Code\User\prompts\analiza-przepływu-danych.md
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-haiku-4-5-20251001)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **analiza-przepływu-danych.md**</summary>
+
+@@ lines 165-167 @@
+
+```
+
+1. **Zaproponuj zapis do pliku**:
+   - **Katalog**: `/notatki/`
+   - **Format**: `YYYY-MM-DD-<nazwa-przepływu>-kod.md`
+   - **Przykłady**:
+     - `2026-10-06-guest-to-login-cart-kod.md`
+     - `2026-10-06-checkout-multistep-kod.md`
+     - `2026-10-06-logout-session-clear-kod.md`
+   
+2. **Strukturuj zawartość**:
+   - Nagłówek (scenariusz, data)
+   - Diagram komunikacji UML (na początek)
+   - Dla każdego kroku: akcja + URL + pliki + mini-diagram
+   
+3. **Zasugeruj rozszerzenia**:
+   - Error flows (wyjątki, błędy)
+   - Performance flows (bottlenecks)
+   - Security flows (auth checkpoints)
+   - Alternative paths (user cancels, timeout, etc.)
+   
+4. **Refactoring hints**:
+   - Gdzie logika mogłaby być uproszczona
+   - Potencjalne race conditions
+   - Miejsca do optymalizacji async/await
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-haiku-4-5-20251001)**_
+
+✅ **Poprawiłem prompt:**
+
+1. **Diagram przepływu → UML Diagram Komunikacji**
+   - Zmieniono z `graph TD/LR` na `sequenceDiagram` (Mermaid)
+   - Pokazuje sekwencję komunikacji między aktorami (User → Browser → Components → Hooks → Storage/API → Database)
+   - Zaznacza async/await calls i conditional paths (alt/if)
+
+2. **Post-Analiza — Format zapisu**
+   - Katalog: `notatki`
+   - Format: `YYYY-MM-DD-<nazwa-przepływu>-kod.md`
+   - Przykłady:
+     - `2026-10-06-guest-to-login-cart-kod.md`
+     - `2026-10-06-checkout-multistep-kod.md`
+
+3. **Dodatkowe wskazówki**:
+   - Strukturyzacja zawartości (diagram na początek)
+   - Sugerowane rozszerzenia (error flows, performance, security)
+   - Refactoring hints (race conditions, optimizations)
+
+Prompt jest teraz gotowy do użycia! 🚀
+
+---
+
+_**User (2026-10-06 08:37:45Z)**_
+
+przenieś prompt to workspace
+
+---
+
+_**Agent (anthropic/Anthropic/claude-haiku-4-5-20251001)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `analiza-przepływu-danych.md`
+
+**Input:**
+
+- endLine: `300`
+- filePath: `c:\Users\ev45i\AppData\Roaming\Code\User\prompts\analiza-przepływu-danych.md`
+- startLine: `1`
+
+**Result:**
+
+````
+---
+name: analiza-przepływu-danych
+type: data-flow-analysis
+category: technical-documentation
+applyTo: ShopEasy
+version: 1.0
+date: 2026-10-06
+status: ✅ Gotowe do analizy
+---
+
+# Analiza Przepływu Danych
+
+Utwórz szczegółową analizę przepływu danych dla scenariusza użytkownika w aplikacji.
+
+## Input
+
+Scenariusz powinien zawierać:
+- **Ścieżka**: Sekwencja kroków użytkownika (np. niezalogowany → dodaj produkt → zaloguj → weryfikuj koszyk)
+- **Kod źródłowy**: Dostęp do plików projektu (komponenty, API, hooki, akcje serwera)
+- **Punkt startowy**: URL, ekran lub akcja początkowa
+
+## Procedura
+
+Dla **każdego kroku** w sekwencji:
+
+### 1. Zidentyfikuj Akcję
+- **Co się dzieje**: Krótko opisz akcję użytkownika lub system action
+  - Przykłady: klik na przycisk, submit formularza, API call, wyzwolenie hooka
+- **URL/Ekran**: Wskaż bieżący URL i widoczny stan UI
+- **Trigger**: Jakie zdarzenie wyzwoliło ten krok
+
+### 2. Mapuj Dotkniętych Pliki
+Dla każdego pliku zaangażowanego w ten krok:
+- **Ścieżka pliku**: Link markdown do pliku w workspace
+- **Symbol**: Nazwa funkcji/komponentu/metody (bez @ symboli)
+- **Linia**: Numer linii gdzie logika działa (jeśli dotyczy)
+- **Akcja**: Jedno zdanie co symbol robi
+
+**Format**:
+```
+- [path/to/file.tsx](path/to/file.tsx) 
+  - `SymbolName` (linia XX) — opis akcji
+```
+
+### 3. Rysuj Diagram Komunikacji UML
+Dla każdego kroku utwórz diagram komunikacji Mermaid pokazujący:
+- **Sekwencja**: Kolejność komunikacji między aktorami (User, Browser, Component, Hook, API, Database)
+- **Async/Await**: Zaznacz async calls (`async`, `await`) i callbacks
+- **Data flow**: Jakie dane wysyłane (request/response)
+
+**Struktura diagramu**:
+```mermaid
+sequenceDiagram
+    actor User
+    participant Browser as 🌐 Browser
+    participant Component as ⚛️ Component
+    participant Hook as 🪝 Hook useCart
+    participant Store as 📦 Zustand Store
+    participant API as 🔌 API/Server Action
+    participant DB as 🗄️ Database
+… (output truncated)
+````
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-haiku-4-5-20251001)**_
+
+<tool-use data-tool-type="write" data-tool-name="create_file"><details>
+<summary>Tool use: **create_file**</summary>
+
+Created `analiza-przepływu-danych.md`
+
+**Input:**
+
+- content:
+
+````
+---
+name: analiza-przepływu-danych
+type: data-flow-analysis
+category: technical-documentation
+applyTo: ShopEasy
+version: 1.0
+date: 2026-10-06
+status: ✅ Gotowe do analizy
+---
+
+# Analiza Przepływu Danych
+
+Utwórz szczegółową analizę przepływu danych dla scenariusza użytkownika w aplikacji.
+
+## Input
+
+Scenariusz powinien zawierać:
+- **Ścieżka**: Sekwencja kroków użytkownika (np. niezalogowany → dodaj produkt → zaloguj → weryfikuj koszyk)
+- **Kod źródłowy**: Dostęp do plików projektu (komponenty, API, hooki, akcje serwera)
+- **Punkt startowy**: URL, ekran lub akcja początkowa
+
+## Procedura
+
+Dla **każdego kroku** w sekwencji:
+
+### 1. Zidentyfikuj Akcję
+- **Co się dzieje**: Krótko opisz akcję użytkownika lub system action
+  - Przykłady: klik na przycisk, submit formularza, API call, wyzwolenie hooka
+- **URL/Ekran**: Wskaż bieżący URL i widoczny stan UI
+- **Trigger**: Jakie zdarzenie wyzwoliło ten krok
+
+### 2. Mapuj Dotkniętych Pliki
+Dla każdego pliku zaangażowanego w ten krok:
+- **Ścieżka pliku**: Link markdown do pliku w workspace
+- **Symbol**: Nazwa funkcji/komponentu/metody (bez @ symboli)
+- **Linia**: Numer linii gdzie logika działa (jeśli dotyczy)
+- **Akcja**: Jedno zdanie co symbol robi
+
+**Format**:
+```
+- [path/to/file.tsx](path/to/file.tsx) 
+  - `SymbolName` (linia XX) — opis akcji
+```
+
+### 3. Rysuj Diagram Komunikacji UML
+Dla każdego kroku utwórz diagram komunikacji Mermaid pokazujący:
+- **Sekwencja**: Kolejność komunikacji między aktorami (User, Browser, Component, Hook, API, Database)
+- **Async/Await**: Zaznacz async calls (`async`, `await`) i callbacks
+- **Data flow**: Jakie dane wysyłane (request/response)
+
+**Struktura diagramu**:
+```mermaid
+sequenceDiagram
+    actor User
+    participant Browser as 🌐 Browser
+    participant Component as ⚛️ Component
+    participant Hook as 🪝 Hook useCart
+    participant Store as 📦 Zustand Store
+    participant API as 🔌 API/Server Action
+    participant DB as 🗄️ Database
+
+    User->>Browser: Click "Add to Cart"
+    Browser->>Component: onClick event
+    Component->>Hook: addItem(product)
+    alt isLoggedIn = true
+        Hook->>API: await addToDbCart()
+        API->>DB: INSERT cartItem
+        DB-->>API: success
+        API-->>Hook: { success: true }
+    else isLoggedIn = false
+        Hook->>Store: guestAdd()
+        Store->>Browser: localStorage update
+        Browser-->>Store: persist
+    end
+    Hook-->>Component: { success: true }
+    Component-->>User: toast "Dodano do koszyka"
+```
+
+## Output
+
+Dokument powinien zawierać:
+
+- **Nagłówek**: Nazwa scenariusza, data, status
+- **Dla każdego kroku**:
+  - Numer kroku
+  - Krótki opis akcji
+  - Bieżący URL
+  - Tablica dotkniętych plików z linkami
+  - Diagram Mermaid przepływu danych
+- **Bez**: Map symboli, map typów, analiza storage strategy, instrukcje testów
+- **Format**: Markdown z linkami, nie wklejaj fragmentów kodu
+
+## Wyłączenia
+
+- ❌ Nie wklejaj pseudokodu ani fragmentów kodu źródłowego
+- ❌ Nie twórz ogólnych map (symbol map, type map, full dependency map)
+- ❌ Nie opisuj storage mechanizmów szczegółowo (localStorage vs DB) — tylko gdzie się dane trafią
+- ❌ Nie dodawaj instrukcji testów ani walidacji
+- ❌ Nie twórz long summaries — bądź zwięźle, linkuj zamiast parafrazować
+
+## Przykład Output
+
+```markdown
+# Analiza Przepływu Danych: Guest → Login → Cart
+
+## Krok 1: Niezalogowany — Dodaj produkt do koszyka
+
+**Akcja**: Klik "Dodaj do koszyka" na karcie produktu  
+**URL**: `http://127.0.0.1:3100`  
+**Trigger**: Click event na AddToCartButton
+
+### Dotkniętych pliki
+
+- [components/products/AddToCartButton.tsx](components/products/AddToCartButton.tsx)
+  - `AddToCartButton` (linia ~20) — onClick handler
+- [hooks/useCart.ts](hooks/useCart.ts)
+  - `useCart()` (linia ~22) — Hook
+  - `addItem()` (linia ~90-110) — Guest path logika
+- [store/cart.ts](store/cart.ts)
+  - `useCartStore` (linia ~23) — Zustand store
+  - `addItem()` (linia ~27) — localStorage sync
+
+### Diagram Komunikacji UML
+
+\`\`\`mermaid
+sequenceDiagram
+    actor User
+    participant Browser as 🌐 Browser
+    participant AddToCartButton as ⚛️ AddToCartButton
+    participant Hook as 🪝 useCart
+    participant Store as 📦 useCartStore
+    
+    User->>Browser: Click "Dodaj do koszyka"
+    Browser->>AddToCartButton: onClick
+    AddToCartButton->>Hook: addItem(product)
+    Hook->>Store: guestAdd()
+    Store->>Browser: localStorage persist
+    Browser-->>User: toast "Dodano do koszyka"
+\`\`\`
+
+## Krok 2: Zalogowanie
+
+**Akcja**: Submit formularza logowania  
+**URL**: `http://127.0.0.1:3100/login`  
+**Trigger**: Klik "Zaloguj się"
+
+### Dotkniętych pliki
+
+[... itd]
+```
+
+## Iteracja
+
+1. Przygotuj draft analizy dla pierwszego kroku
+2. Zidentyfikuj niedoróżwistości lub słabe punkty:
+   - Czy każdy diagram jest jasny?
+   - Czy każdy link prowadzi do istniejącego pliku?
+   - Czy opis akcji jest wystarczająco konkretny?
+3. Zapytaj użytkownika o umiejscowienie wątpliwości
+4. Zaktualizuj i ustabilizuj
+
+## Post-Analiza
+
+Kiedy analiza jest gotowa:
+
+1. **Zaproponuj zapis do pliku**:
+   - **Katalog**: `/notatki/`
+   - **Format**: `YYYY-MM-DD-<nazwa-przepływu>-kod.md`
+   - **Przykłady**:
+     - `2026-10-06-guest-to-login-cart-kod.md`
+     - `2026-10-06-checkout-multistep-kod.md`
+     - `2026-10-06-logout-session-clear-kod.md`
+   
+2. **Strukturuj zawartość**:
+   - Nagłówek (scenariusz, data)
+   - Diagram komunikacji UML (na początek)
+   - Dla każdego kroku: akcja + URL + pliki + mini-diagram
+   
+3. **Zasugeruj rozszerzenia**:
+   - Error flows (wyjątki, błędy)
+   - Performance flows (bottlenecks)
+   - Security flows (auth checkpoints)
+   - Alternative paths (user cancels, timeout, etc.)
+   
+4. **Refactoring hints**:
+   - Gdzie logika mogłaby być uproszczona
+   - Potencjalne race conditions
+   - Miejsca do optymalizacji async/await
+
+````
+
+- filePath: `c:\Projects\infoshare-accenture-ai-dev-1\.prompts\analiza-przepływu-danych.md`
+
+**Result:**
+
+```
+The following files were successfully edited:
+c:\Projects\infoshare-accenture-ai-dev-1\.prompts\analiza-przepływu-danych.md
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-haiku-4-5-20251001)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **analiza-przepływu-danych.md**</summary>
+
+@@ lines 1-1 @@
+
+````
+---
+name: analiza-przepływu-danych
+type: data-flow-analysis
+category: technical-documentation
+applyTo: ShopEasy
+version: 1.0
+date: 2026-10-06
+status: ✅ Gotowe do analizy
+---
+
+# Analiza Przepływu Danych
+
+Utwórz szczegółową analizę przepływu danych dla scenariusza użytkownika w aplikacji.
+
+## Input
+
+Scenariusz powinien zawierać:
+- **Ścieżka**: Sekwencja kroków użytkownika (np. niezalogowany → dodaj produkt → zaloguj → weryfikuj koszyk)
+- **Kod źródłowy**: Dostęp do plików projektu (komponenty, API, hooki, akcje serwera)
+- **Punkt startowy**: URL, ekran lub akcja początkowa
+
+## Procedura
+
+Dla **każdego kroku** w sekwencji:
+
+### 1. Zidentyfikuj Akcję
+- **Co się dzieje**: Krótko opisz akcję użytkownika lub system action
+  - Przykłady: klik na przycisk, submit formularza, API call, wyzwolenie hooka
+- **URL/Ekran**: Wskaż bieżący URL i widoczny stan UI
+- **Trigger**: Jakie zdarzenie wyzwoliło ten krok
+
+### 2. Mapuj Dotkniętych Pliki
+Dla każdego pliku zaangażowanego w ten krok:
+- **Ścieżka pliku**: Link markdown do pliku w workspace
+- **Symbol**: Nazwa funkcji/komponentu/metody (bez @ symboli)
+- **Linia**: Numer linii gdzie logika działa (jeśli dotyczy)
+- **Akcja**: Jedno zdanie co symbol robi
+
+**Format**:
+```
+- [path/to/file.tsx](path/to/file.tsx) 
+  - `SymbolName` (linia XX) — opis akcji
+```
+
+### 3. Rysuj Diagram Komunikacji UML
+Dla każdego kroku utwórz diagram komunikacji Mermaid pokazujący:
+- **Sekwencja**: Kolejność komunikacji między aktorami (User, Browser, Component, Hook, API, Database)
+- **Async/Await**: Zaznacz async calls (`async`, `await`) i callbacks
+- **Data flow**: Jakie dane wysyłane (request/response)
+
+**Struktura diagramu**:
+```mermaid
+sequenceDiagram
+    actor User
+    participant Browser as 🌐 Browser
+    participant Component as ⚛️ Component
+    participant Hook as 🪝 Hook useCart
+    participant Store as 📦 Zustand Store
+    participant API as 🔌 API/Server Action
+    participant DB as 🗄️ Database
+
+    User->>Browser: Click "Add to Cart"
+    Browser->>Component: onClick event
+    Component->>Hook: addItem(product)
+    alt isLoggedIn = true
+        Hook->>API: await addToDbCart()
+        API->>DB: INSERT cartItem
+        DB-->>API: success
+        API-->>Hook: { success: true }
+    else isLoggedIn = false
+        Hook->>Store: guestAdd()
+        Store->>Browser: localStorage update
+        Browser-->>Store: persist
+    end
+    Hook-->>Component: { success: true }
+    Component-->>User: toast "Dodano do koszyka"
+```
+
+## Output
+
+Dokument powinien zawierać:
+
+- **Nagłówek**: Nazwa scenariusza, data, status
+- **Dla każdego kroku**:
+  - Numer kroku
+  - Krótki opis akcji
+  - Bieżący URL
+  - Tablica dotkniętych plików z linkami
+  - Diagram Mermaid przepływu danych
+- **Bez**: Map symboli, map typów, analiza storage strategy, instrukcje testów
+- **Format**: Markdown z linkami, nie wklejaj fragmentów kodu
+
+## Wyłączenia
+
+- ❌ Nie wklejaj pseudokodu ani fragmentów kodu źródłowego
+- ❌ Nie twórz ogólnych map (symbol map, type map, full dependency map)
+- ❌ Nie opisuj storage mechanizmów szczegółowo (localStorage vs DB) — tylko gdzie się dane trafią
+- ❌ Nie dodawaj instrukcji testów ani walidacji
+- ❌ Nie twórz long summaries — bądź zwięźle, linkuj zamiast parafrazować
+
+## Przykład Output
+
+```markdown
+# Analiza Przepływu Danych: Guest → Login → Cart
+
+## Krok 1: Niezalogowany — Dodaj produkt do koszyka
+
+**Akcja**: Klik "Dodaj do koszyka" na karcie produktu  
+**URL**: `http://127.0.0.1:3100`  
+**Trigger**: Click event na AddToCartButton
+
+### Dotkniętych pliki
+
+- [components/products/AddToCartButton.tsx](components/products/AddToCartButton.tsx)
+  - `AddToCartButton` (linia ~20) — onClick handler
+- [hooks/useCart.ts](hooks/useCart.ts)
+  - `useCart()` (linia ~22) — Hook
+  - `addItem()` (linia ~90-110) — Guest path logika
+- [store/cart.ts](store/cart.ts)
+  - `useCartStore` (linia ~23) — Zustand store
+  - `addItem()` (linia ~27) — localStorage sync
+
+### Diagram Komunikacji UML
+
+\`\`\`mermaid
+sequenceDiagram
+    actor User
+    participant Browser as 🌐 Browser
+    participant AddToCartButton as ⚛️ AddToCartButton
+    participant Hook as 🪝 useCart
+    participant Store as 📦 useCartStore
+    
+    User->>Browser: Click "Dodaj do koszyka"
+    Browser->>AddToCartButton: onClick
+    AddToCartButton->>Hook: addItem(product)
+    Hook->>Store: guestAdd()
+    Store->>Browser: localStorage persist
+    Browser-->>User: toast "Dodano do koszyka"
+\`\`\`
+
+## Krok 2: Zalogowanie
+
+**Akcja**: Submit formularza logowania  
+**URL**: `http://127.0.0.1:3100/login`  
+**Trigger**: Klik "Zaloguj się"
+
+### Dotkniętych pliki
+
+[... itd]
+```
+
+## Iteracja
+
+1. Przygotuj draft analizy dla pierwszego kroku
+2. Zidentyfikuj niedoróżwistości lub słabe punkty:
+   - Czy każdy diagram jest jasny?
+   - Czy każdy link prowadzi do istniejącego pliku?
+   - Czy opis akcji jest wystarczająco konkretny?
+3. Zapytaj użytkownika o umiejscowienie wątpliwości
+4. Zaktualizuj i ustabilizuj
+
+## Post-Analiza
+
+Kiedy analiza jest gotowa:
+
+1. **Zaproponuj zapis do pliku**:
+   - **Katalog**: `/notatki/`
+   - **Format**: `YYYY-MM-DD-<nazwa-przepływu>-kod.md`
+   - **Przykłady**:
+     - `2026-10-06-guest-to-login-cart-kod.md`
+     - `2026-10-06-checkout-multistep-kod.md`
+     - `2026-10-06-logout-session-clear-kod.md`
+   
+2. **Strukturuj zawartość**:
+   - Nagłówek (scenariusz, data)
+   - Diagram komunikacji UML (na początek)
+   - Dla każdego kroku: akcja + URL + pliki + mini-diagram
+   
+3. **Zasugeruj rozszerzenia**:
+   - Error flows (wyjątki, błędy)
+   - Performance flows (bottlenecks)
+   - Security flows (auth checkpoints)
+   - Alternative paths (user cancels, timeout, etc.)
+   
+4. **Refactoring hints**:
+   - Gdzie logika mogłaby być uproszczona
+   - Potencjalne race conditions
+   - Miejsca do optymalizacji async/await
+
+````
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-haiku-4-5-20251001)**_
+
+✅ **Przeniosłem prompt do workspace:**
+
+**Nowa lokalizacja**: `.prompts/analiza-przepływu-danych.md`
+
+Prompt jest teraz workspace-scoped i dostępny wyłącznie dla projektu ShopEasy.
+
+Możesz usunąć starą kopię z User Prompts:
+```bash
+rm "c:\Users\ev45i\AppData\Roaming\Code\User\prompts\analiza-przepływu-danych.md"
+```
+
+Lub pozostawić obie kopie — VS Code będzie preferować workspace-scoped prompt gdy pracujesz w tym projekcie.
