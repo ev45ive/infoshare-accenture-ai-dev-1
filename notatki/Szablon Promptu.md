@@ -22,7 +22,7 @@ Przeanalizuj wybrany przepływ w aplikacji.
 
 ## Zasady:
 - Jeśli widzisz komunikat Brak danych to spróbuj ponownie za chwilę (2sek) aż dane się załadują (np. Koszyk pusty)
-- Domyślna lokalizacja pliku  z flow do potwierdzenia przez usera to ./notatki/<data>-<nazwa-flow>.md
+- Domyślna lokalizacja pliku  z flow do potwierdzenia przez usera to `./notatki/<data>-<nazwa-flow>.md`
 - Jeśli diagram ma > 4 kroki, rozbij na kilka mnniejszych diagramów poziomych, jeden po drugim
 
 
@@ -46,7 +46,7 @@ Rola: <rola użytkownika>
 
 3. ...
 
-## Posconditions
+## Postconditions
  - Efekt końcowy
  - Jak stwierdzamy czy cel osiągniety.
 
