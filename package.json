@@ -14,6 +14,7 @@
     "workshop:mode": "node scripts/workshop.mjs mode",
     "test:unit": "tsx --test tests/unit/*.test.ts",
     "test:integration": "node scripts/workshop.mjs integration",
+    "test:integration:direct": "tsx --import ./tests/integration/setup.ts --test tests/integration/*.test.ts",
     "test:e2e": "playwright test",
     "test:mcp": "node --test tests/mcp/*.test.mjs"
   },

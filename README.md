@@ -32,13 +32,14 @@ npm run typecheck
 npm run lint
 npm run test:unit
 npm run test:integration
+npm run test:integration:direct
 npm run test:mcp
 npm run workshop:reset
 npm run test:e2e
 npm run build
 ```
 
-Unit używa Node test runner i tsx. Integracja tworzy i odtwarza osobną `.workshop/integration.db`; nie zmienia głównego workshop.db. E2E uruchamia własny serwer na 3100 i potrzebuje czystej bazy oraz wolnego portu. Domyślna przeglądarka testowa to lokalny Microsoft Edge w trybie bez okna. Zmianę przeglądarki wykonaj w playwright.config.ts po sprawdzeniu jej dostępności. Wyniki i obrazy E2E są w .workshop, a ślady błędów w test-results. E2E tworzy zamówienie, więc po nim wykonaj reset przed pracą na baseline.
+Unit używa Node test runner i tsx. Integracja tworzy i odtwarza osobną `.workshop/integration.db`; nie zmienia głównego workshop.db. `test:integration:direct` uruchamia te same testy bez odtwarzania bazy: wymaga istniejącej, zaseedowanej `.workshop/integration.db` (np. po `test:integration`), a `tests/integration/setup.ts` wymusza tę bazę, więc główny workshop.db jest bezpieczny. Wybrane testy: `npx tsx --import ./tests/integration/setup.ts --test --test-name-pattern="fragment nazwy" tests/integration/*.test.ts` albo ścieżka do jednego pliku zamiast globa (flagi muszą stać przed plikami). E2E uruchamia własny serwer na 3100 i potrzebuje czystej bazy oraz wolnego portu. Domyślna przeglądarka testowa to lokalny Microsoft Edge w trybie bez okna. Zmianę przeglądarki wykonaj w playwright.config.ts po sprawdzeniu jej dostępności. Wyniki i obrazy E2E są w .workshop, a ślady błędów w test-results. E2E tworzy zamówienie, więc po nim wykonaj reset przed pracą na baseline.
 
 ## Mock płatności
 

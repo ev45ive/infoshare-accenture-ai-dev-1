@@ -57,6 +57,7 @@ npm run typecheck       # weryfikacja TS
 npm run lint            # eslint
 npm run test:unit       # testy jednostkowe
 npm run test:integration # testy integracyjne
+npm run test:integration:direct # testy integracyjne z testoweą bazą .workshop/integration.db
 npm run test:e2e        # testy end-to-end
 ```
 
