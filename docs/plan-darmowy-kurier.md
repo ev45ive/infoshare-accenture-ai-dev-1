@@ -20,6 +20,21 @@
    - E2E: próg i spadek poniżej progu po usunięciu produktu.
    - `tests/e2e/baseline.spec.ts` bez zmian (1499 przy 29999).
 
+## Postęp (stan na 2026-10-06)
+
+- [x] **1. Źródło prawdy** — `lib/constants/checkout.ts`: `FREE_DELIVERY_THRESHOLD`, `calculateDeliveryCost`, `calculateOrderTotals` (typ `OrderTotals`); `lib/format.ts`: `formatDeliveryCost` ("Gratis" dla 0).
+- [x] **2. Backend** — logika zamówienia wydzielona do `lib/orders.ts` (`placeOrder`, bez `'use server'`); `createOrder` w `lib/actions/checkout.ts` to cienka nakładka (sesja + `revalidatePath`). Commit `4ed2dab` (WIP).
+- [ ] **3. Frontend** — nie rozpoczęty: `CartSummary`, `checkout/delivery/page.tsx` (nadal lokalne `DELIVERY_OPTIONS`), `checkout/payment/page.tsx`, sukces i historia zamówień ("Gratis" dla 0).
+- [ ] **4. Dokumentacja** — `docs/product-contract.md` nie zaktualizowany. Skrypt `test:integration:direct` opisany w `README.md` i `AGENTS.md` (commit `8eca052`).
+- [~] **5. Testy** (commit `6ff1c8f`, WIP):
+  - [x] Unit: próg 29999/30000/30001 gr, kurier i paczkomat, `calculateOrderTotals`, `formatDeliveryCost` (26/26 w `npm run test:unit`).
+  - [x] Integracyjny: jeden test `placeOrder` — zakup >= 300 zł → `deliveryCost` = 0, `total` = `subtotal`, "Gratis" w mailu (4/4 w `npm run test:integration:direct`).
+  - [ ] E2E: próg i spadek poniżej progu po usunięciu produktu — nie rozpoczęte; `tests/e2e/baseline.spec.ts` bez zmian.
+
+**Weryfikacja backendu:** `typecheck`, `lint`, `test:unit` i `test:integration:direct` przechodzą. Nie uruchamiano: `test:e2e`, `build`, weryfikacji ręcznej na działającej aplikacji.
+
+**Uwaga:** UI nadal liczy dostawę po staremu (14,99 zł), więc gratis jest widoczny tylko w zapisanym zamówieniu i mailu, dopóki nie powstanie frontend (krok 3).
+
 ## Poza zakresem
 Schemat bazy, katalog, logowanie, mock płatności, paczkomat, rabaty, progi regionalne, migracja starych zamówień.
 
