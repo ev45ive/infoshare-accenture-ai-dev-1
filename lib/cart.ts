@@ -1,4 +1,10 @@
 import { db } from '@/lib/db'
+import {
+  INVALID_QUANTITY_MESSAGE,
+  getItemLimit,
+  getLimitExceededMessage,
+  isValidQuantity,
+} from '@/lib/constants/cart'
 import type { CartCookieItem } from '@/types'
 
 // Bez 'use server': funkcje przyjmują userId, więc nie mogą być publicznymi akcjami.
@@ -10,6 +16,8 @@ export type CartResult =
   | { success?: undefined; error: string }
 
 export async function addToCart(userId: string, productId: string, quantity = 1): Promise<CartResult> {
+  if (!isValidQuantity(quantity)) return { error: INVALID_QUANTITY_MESSAGE }
+
   const product = await db.product.findUnique({ where: { id: productId } })
   if (!product) return { error: 'Produkt nie istnieje.' }
 
@@ -22,6 +30,10 @@ export async function addToCart(userId: string, productId: string, quantity = 1)
   const existing = await db.cartItem.findUnique({
     where: { userId_productId: { userId, productId } },
   })
+
+  if ((existing?.quantity ?? 0) + quantity > getItemLimit(product.stock)) {
+    return { error: getLimitExceededMessage(product.stock) }
+  }
 
   if (existing) {
     await db.cartItem.update({
@@ -50,11 +62,20 @@ export async function removeFromCart(userId: string, productId: string): Promise
 
 export async function updateCartQuantity(userId: string, productId: string, quantity: number): Promise<CartResult> {
   if (quantity <= 0) return removeFromCart(userId, productId)
+  if (!isValidQuantity(quantity)) return { error: INVALID_QUANTITY_MESSAGE }
 
-  await db.cartItem.updateMany({
-    where: { userId, productId },
-    data: { quantity },
+  const existing = await db.cartItem.findUnique({
+    where: { userId_productId: { userId, productId } },
+    include: { product: true },
   })
+  if (!existing) return { success: true }
+
+  // Zmniejszenie jest zawsze dozwolone, także z pozycji ponad limit.
+  if (quantity > existing.quantity && quantity > getItemLimit(existing.product.stock)) {
+    return { error: getLimitExceededMessage(existing.product.stock) }
+  }
+
+  await db.cartItem.update({ where: { id: existing.id }, data: { quantity } })
   return { success: true }
 }
 
