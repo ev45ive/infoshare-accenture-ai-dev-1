@@ -8,7 +8,7 @@ import { z } from "zod";
 const appRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const fixturePath = process.argv[2]
   ? resolve(appRoot, process.argv[2])
-  : resolve(appRoot, "../mcp-fixtures/documents.json");
+  : resolve(appRoot, "./mcp-fixtures/documents.json");
 const documents = JSON.parse(readFileSync(fixturePath, "utf8"));
 
 
