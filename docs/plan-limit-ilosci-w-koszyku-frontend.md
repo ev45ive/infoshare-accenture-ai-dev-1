@@ -55,10 +55,10 @@ Zmiana UI/zachowania: domknąć frontend limitu `min(10, stan)` dowodem E2E dla 
 
 ## Postęp (stan na 2026-10-07)
 
-- [x] **1. E2E gościa** — `tests/e2e/limit-ilosci.spec.ts`: 10 szt. z karty `mysz-swiftclick-8k`, w `/cart` "Zwiększ ilość" nieaktywny, kolejne dodanie pokazuje "Maksymalnie 10 szt. tego produktu.". **Nie uruchamiano** (patrz Ryzyka). Commit: wpiszę przy etapie 2.
-- [ ] **2. E2E zalogowanego** — nierozpoczęty.
+- [x] **1. E2E gościa** — `tests/e2e/limit-ilosci.spec.ts`: 10 szt. z karty `mysz-swiftclick-8k`, w `/cart` "Zwiększ ilość" nieaktywny, kolejne dodanie pokazuje "Maksymalnie 10 szt. tego produktu.". **Nie uruchamiano** (patrz Ryzyka). Commit `a8ab72e` (WIP).
+- [x] **2. E2E zalogowanego** — w `tests/e2e/limit-ilosci.spec.ts`: (a) pozycja ze stanem 0 (`sneakersy-urbanrun-pro`) wyszarzona z komunikatem, "Zwiększ ilość" nieaktywny, "Usuń produkt" opróżnia koszyk; (b) dodanie 2 szt. do 9 szt. powerbanku pokazuje komunikat serwera, ilość w bazie bez zmian; (c) checkout z 12 szt. powerbanku kończy się "Nie udało się złożyć zamówienia", komunikatem limitu, podsumowaniem "× 10" i brakiem zamówienia. Pozycje koszyka `user-workshop` wstawiane przez Prisma, usuwane w `beforeEach`/`afterEach`; `gotoAfterSession` czeka na `/api/auth/session`, żeby klik nie trafił w ścieżkę gościa. **Nie uruchamiano.** Commit: wpiszę przy etapie 3.
 - [ ] **3. Dokumentacja i domknięcie** — nierozpoczęty.
 
-**Weryfikacja:** etap 1: `npm run typecheck`, `npm run lint` bez błędów, `npm run test:unit` 73/73. Nie uruchamiano: `npm run test:e2e` (startuje `npm run dev` przez `scripts/dev.mjs`, poza zakresem; użytkownik niedostępny). Nie sprawdzano w przeglądarce: tak.
+**Weryfikacja:** etapy 1-2: `npm run typecheck`, `npm run lint` bez błędów, `npm run test:unit` 73/73. Nie uruchamiano: `npm run test:e2e` (startuje `npm run dev` przez `scripts/dev.mjs`, poza zakresem; użytkownik niedostępny). Nie sprawdzano w przeglądarce: tak.
 
 **Tryb pracy:** użytkownik był niedostępny na bramkach, więc plan przyjęto jako zatwierdzony i uruchamianie E2E zostawiono użytkownikowi.
