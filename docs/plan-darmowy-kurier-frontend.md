@@ -18,7 +18,7 @@ Zmiana UI/zachowania — klient widzi tę samą kwotę dostawy, którą zapisuje
 ## Zakres
 - Strony/komponenty: `components/cart/CartSummary.tsx`, `app/(shop)/checkout/delivery/page.tsx`, `app/(shop)/checkout/payment/page.tsx`, `app/(shop)/checkout/success/page.tsx`, `app/(shop)/account/orders/[id]/page.tsx`
 - Stan klienta: bez zmian (`store/`, `hooks/` nietknięte).
-- Backend: poza zakresem (gotowy: `calculateDeliveryCost`, `calculateOrderTotals`, `formatDeliveryCost`, `placeOrder`). Poprawki tylko po zgłoszeniu i zgodzie.
+- Backend: poza zakresem, gotowy (commit `7ceca36`): `calculateDeliveryCost`, `calculateOrderTotals`, `formatDeliveryCost`, `placeOrder`, `createOrder` zwracający `PlaceOrderResult` (`success: true | false`; zob. kontrakt, sekcja „Kształt wyniku zamówienia”). Poprawki tylko po zgłoszeniu i zgodzie.
 - Stany UI: koszyk pusty/loading/error bez zmian (obsługuje `cart/page.tsx`); delivery: pusty koszyk → suma 0, dostawa wg metody; sukces/historia: „Gratis” dla 0.
 - Gość i zalogowany: koszyk działa dla obu; checkout tylko zalogowany (proxy).
 
@@ -41,24 +41,24 @@ Zmiana UI/zachowania — klient widzi tę samą kwotę dostawy, którą zapisuje
 ## Postęp (stan na 2026-10-07)
 
 - [x] **1. Koszyk** — `CartSummary`: wiersz „Dostawa” („Od 9,99 zł; gratis kurierem od 300 zł”), natywny `<progress>`, komunikaty „Brakuje X zł…” / „Masz darmową dostawę kurierem DHL”. Commit `1e507a0` (WIP).
-- [x] **2. Strona dostawy** — usunięte lokalne `DELIVERY_OPTIONS` i `formatPrice`; koszt i suma z `calculateOrderTotals`/`calculateDeliveryCost`; kurier „Gratis” z przekreśloną ceną bazową; lokalna mapa `DELIVERY_TEXT` tylko na etykiety. Commit WIP (hash w następnym etapie).
-- [ ] **3. Płatność** — nierozpoczęty.
+- [x] **2. Strona dostawy** — usunięte lokalne `DELIVERY_OPTIONS` i `formatPrice`; koszt i suma z `calculateOrderTotals`/`calculateDeliveryCost`; kurier „Gratis” z przekreśloną ceną bazową; lokalna mapa `DELIVERY_TEXT` tylko na etykiety. Commit `2a6cafc` (WIP).
+- [x] **3. Płatność** — `orderTotal` z `calculateOrderTotals(items, deliveryMethod)` zamiast ceny z `DELIVERY_OPTIONS`; w `sessionStorage` tylko id metody. Commit WIP (hash w następnym etapie).
 - [ ] **4. Sukces i historia zamówień** — nierozpoczęty.
 - [ ] **5. Dokumentacja** — nierozpoczęty.
 - [ ] **6. E2E** — nierozpoczęty.
 
 **Weryfikacja:** `typecheck` i `lint` przechodzą. Nie uruchamiano: `test:unit`, `test:e2e`, `build`. Nie sprawdzano w przeglądarce przez agenta (ręcznie zaakceptowano kod).
 
-**Uwaga:** UI płatności, sukcesu i historii zamówień nadal liczy lub formatuje dostawę po staremu do końca etapów 3-4.
+**Uwaga:** UI sukcesu i historii zamówień nadal formatuje dostawę przez `formatPrice` (0 zł zamiast „Gratis”) do końca etapu 4.
 
 ## Plan testów
 - Unit: bez nowych (logika progu i „Gratis” już pokryta w `tests/unit/checkout.test.ts`; brakująca kwota to jedno odejmowanie inline i jest widoczna w E2E).
-- E2E (propozycja, do zatwierdzenia w etapie 6): jeden scenariusz — koszyk gościa: słuchawki + świeca → „Masz darmową dostawę…”; usunięcie świecy → „Brakuje 0,01 zł…”; dodanie świecy, logowanie, dostawa „Gratis”, płatność, `order.deliveryCost` = 0, sprzątanie zamówienia i koszyka w teście. `tests/e2e/baseline.spec.ts` bez zmian.
+- E2E (zatwierdzone: pełny zakup, nowy plik `tests/e2e/darmowa-dostawa.spec.ts`; `baseline.spec.ts` bez zmian): koszyk gościa: słuchawki → „Brakuje 0,01 zł…”; dodanie świecy → „Masz darmową dostawę…”; usunięcie świecy → „Brakuje 0,01 zł…”; ponowne dodanie świecy, logowanie, dostawa kurierem „Gratis” (razem 339,98 zł), płatność BLIK, `order.deliveryCost` = 0 i `order.total` = `order.subtotal` w bazie. Sprzątanie w `finally`/`afterAll`: zamówienie, pozycje, historia statusów, adres, pozycje koszyka użytkownika (po sprawdzeniu kaskad w `prisma/schema.prisma`). Lokatory po roli/etykiecie. Uruchomienie: `npm run test:e2e` (zatwierdzone; Playwright startuje serwer; port 3100 wolny, baza w stanie startowym po stronie użytkownika).
 - Etapy 2-4 bez osobnych testów: pokrywa je scenariusz E2E z etapu 6.
 
 ## Dokumentacja
-- `docs/product-contract.md` — sekcja „Dostawa i zamówienie” (etap 5).
-- `docs/contracts/darmowy-kurier.md` — sekcja „Oczekiwania frontendu” tylko jeśli wyjdzie nowe pole lub stan (na razie brak).
+- `docs/product-contract.md` — sekcja „Dostawa i zamówienie” (etap 5): dopisać akapit o progu 300 zł; liczby bazowe W01 (kurier 1499, 314,98 zł dla słuchawek) zostają, bo dotyczą 29999 gr poniżej progu.
+- `docs/contracts/darmowy-kurier.md` — sekcja „Oczekiwania frontendu” nie jest już potrzebna; backend zapisał „Kształt wyniku zamówienia”. Dopisz oczekiwania tylko jeśli wyjdzie nowe pole lub stan.
 
 ## Poza zakresem
 Schemat bazy, katalog, logowanie, mock płatności, paczkomat, rabaty, progi regionalne, migracja starych zamówień, `lib/`, `app/api/`, `tests/integration/`.
@@ -67,5 +67,5 @@ Schemat bazy, katalog, logowanie, mock płatności, paczkomat, rabaty, progi reg
 - Zmiana koszyka po zapisie dostawy → koszt liczony na nowo na stronie płatności z `useCart` (nie z `sessionStorage`) → zaplanowane w etapie 3.
 - Scalanie koszyka gościa przy logowaniu zmienia sumę → UI liczy z aktualnego koszyka, brak dodatkowej obsługi.
 - Lokalne `DELIVERY_OPTIONS` na stronie dostawy to rozjazd klient/serwer → usuwane w etapie 2.
-- Test E2E tworzy zamówienie i wymaga środowiska (`workshop:reset` i `dev` wołają `scripts/`, poza zakresem) → zapytam o sposób uruchomienia przed etapem 6.
+- Test E2E tworzy zamówienie na `workshop.db` → sprzątanie w teście; uruchomienie przez `npm run test:e2e` (zatwierdzone); baseline wymaga bazy w stanie startowym, więc po naszym teście nie może zostać żadne zamówienie ani pozycja koszyka.
 - Brzmienie komunikatów → do potwierdzenia przez PO.

@@ -10,7 +10,7 @@ import { useCart } from '@/hooks/useCart'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { DELIVERY_OPTIONS, type DeliveryMethod } from '@/lib/constants/checkout'
+import { DELIVERY_OPTIONS, calculateOrderTotals, type DeliveryMethod } from '@/lib/constants/checkout'
 
 type PaymentTab = 'CARD' | 'BLIK'
 
@@ -36,7 +36,7 @@ export default function PaymentPage() {
       return DELIVERY_OPTIONS.some((option) => option.id === stored.deliveryMethod) ? stored.deliveryMethod : null
     } catch { return null }
   }, [deliveryRaw])
-  const deliveryCost = DELIVERY_OPTIONS.find((option) => option.id === deliveryMethod)?.cost ?? 0
+  const orderTotal = deliveryMethod ? calculateOrderTotals(items, deliveryMethod).total : total
 
   // CHK-07: 15-minute countdown timer
   const [timeLeft, setTimeLeft] = useState(15 * 60)
@@ -297,7 +297,7 @@ export default function PaymentPage() {
 
             <div className="border-t mt-4 pt-4 flex justify-between font-bold">
               <span>Razem</span>
-              <span>{formatPrice(total + deliveryCost)}</span>
+              <span>{formatPrice(orderTotal)}</span>
             </div>
 
             <p className="text-xs text-gray-500 mt-3">
