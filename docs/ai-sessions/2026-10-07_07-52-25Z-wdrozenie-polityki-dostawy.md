@@ -817,3 +817,4586 @@ _**Agent (copilot/claude-sonnet-5.5)**_
 
 Created 3 todos
 </details></tool-use>
+
+---
+
+_**User (2026-10-07 08:00:16Z)**_
+
+Wdróż część frontendową zmiany. Plik analizy i kontrakt wskazałem w ostatniej odpowiedzi Analityka (sekcje Handoff i Kontrakt). Zacznij od Fazy A skilla frontend-implementation.
+
+---
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read skill `frontend-implementation`
+
+**Input:**
+
+- endLine: `250`
+- filePath: `c:\Projects\infoshare-accenture-ai-dev-1\.github\skills\frontend-implementation\SKILL.md`
+- startLine: `1`
+
+**Result:**
+
+```
+---
+name: frontend-implementation
+description: 'Planuje i wdraża zmianę frontendu etapami z bramkami weryfikacji przez człowieka: refaktor, zmiana UI/zachowania lub nowy widok. Use when: plan zmiany UI, implementacja frontendu, komponenty React, strony Next.js (app/), formularze, koszyk/checkout w UI, shadcn/ui, Tailwind, stany loading/empty/error, dostępność (a11y), testy E2E Playwright, etapy/fazy, aktualizacja postępu w planie, commit WIP.'
+argument-hint: 'ścieżka do pliku planu LUB nazwa zmiany/widoku do zaplanowania'
+---
+
+# Implementacja frontendu etapami
+
+Prowadzi zmianę UI od planu do wdrożenia małymi etapami. Po każdym etapie zatrzymuje się na bramce, na której decyduje człowiek.
+
+## Wejście
+
+- Ścieżka do istniejącego planu zmiany, albo
+- nazwa zmiany lub widoku do zaplanowania (wtedy zacznij od Fazy A i zapisz plan według [szablonu](./references/plan-template.md)).
+
+## Zasady nadrzędne
+
+- Nie zgaduj i nie zakładaj. Brak informacji lub niejasność → zapytaj przez `vscode_askQuestions` i **zatrzymaj się**.
+- Trzymaj się zakresu etapu. Nie zmieniaj backendu (server actions, `lib/`, baza), jeśli nie należy do etapu. Brakujący kontrakt backendu zgłoś jako pytanie, nie dopisuj go po cichu.
+- Respektuj ścieżki poza zakresem z AGENTS.md: nie czytaj ich, nie edytuj, nie uruchamiaj skryptów z tych katalogów, także pośrednio przez komendy npm. Gdy potrzebna komenda je woła, poszukaj alternatywy z AGENTS.md/README albo zapytaj.
+- Jeśli narzędzie edycji jest wyłączone, nie obchodź tego terminalem. Powiedz o tym i podaj gotową treść do wklejenia.
+- Weryfikacja w przeglądarce (zrzut ekranu, klikanie) **tylko na prośbę użytkownika**. Domyślnie weryfikacja to komendy (`typecheck`, `lint`, testy) i opis kroku ręcznego dla człowieka.
+- Bramki `[STOP]` są obowiązkowe: nie przechodź dalej bez odpowiedzi użytkownika.
+
+## Faza A. Plan (bez edycji kodu)
+
+1. Wczytaj plan lub zbierz kontekst z kodu (read-only): istniejące komponenty, strony, `store/`, `hooks
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read skill `frontend-implementation`: `testing-rules.md`
+
+**Input:**
+
+- endLine: `200`
+- filePath: `c:\Projects\infoshare-accenture-ai-dev-1\.github\skills\frontend-implementation\references\testing-rules.md`
+- startLine: `1`
+
+**Result:**
+
+```
+# Reguły testów
+
+W repo nie ma narzędzi do testów komponentów (Vitest, Testing Library). Nie dodawaj ich bez zgody użytkownika. Dostępne warstwy: unit (`tsx --test`), integracja, E2E (Playwright).
+
+## Zasada podziału: każda warstwa sprawdza co innego
+
+| Warstwa | Sprawdza | Nie sprawdza |
+|---------|----------|--------------|
+| Unit | Czystą logikę wyciągniętą z komponentów: formatowanie, filtrowanie, obliczenia widoczne w UI, walidacje | Renderowania, DOM, przeglądarki |
+| E2E | Ścieżkę użytkownika w przeglądarce: widoczność elementów, nawigacja, formularze, stany UI | Wartości brzegowych logiki (to robi unit) |
+| Integracja | Backend (akcje, baza). Poza zakresem tego skilla, chyba że etap dotyka backendu | — |
+
+**Nie powtarzaj tego samego scenariusza na dwóch poziomach.** Chcesz przetestować więcej logiki z komponentu? Wyciągnij ją do czystej funkcji i przetestuj jednostkowo. E2E zostaw tylko ścieżkę.
+
+## Co wchodzi w zakres wg rodzaju zmiany
+
+- **Refaktor:** istniejące testy (w tym `tests/e2e/baseline.spec.ts`) muszą przejść bez zmian. Nowy test tylko dla nowego seamu, który wcześniej nie był testowalny.
+- **Zmiana UI/zachowania:** unit na wyciągniętą logikę; E2E tylko jeśli zmienia się ścieżka użytkownika lub widoczne zachowanie krytycznego przepływu (koszyk, logowanie, checkout).
+- **Nowy widok/komponent:** unit na logikę; E2E na szczęśliwą ścieżkę + najważniejszy stan błędu lub pusty, jeśli widok jest częścią ścieżki zakupowej. Czysto prezentacyjny komponent bez logiki: zapisz jawnie „bez testów automatycznych” i weryfikację ręczną.
+
+Przy planie testów zapisz decyzję o każdej warstwie jawnie, także „bez testu + powód”.
+
+## Reguły pisania testów
+
+- Unit: wartości brzegowe, pusta lista, wartości ujemne/zerowe tam, gdzie mają znaczenie.
+- E2E: lokatory po roli i etykiecie (`getByRole`, `getByLabel`, `getByText`), nie po klasach CSS ani strukturze DOM.
+- E2E: używaj konta testowego i danych z seeda (AGENTS.md). Dane tworzone w teście sprz
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read skill `frontend-implementation`: `plan-template.md`
+
+**Input:**
+
+- endLine: `200`
+- filePath: `c:\Projects\infoshare-accenture-ai-dev-1\.github\skills\frontend-implementation\references\plan-template.md`
+- startLine: `1`
+
+**Result:**
+
+````
+# Szablon planu i checklista
+
+## Checklista planu wejściowego
+
+Plan jest gotowy do implementacji, gdy zawiera:
+
+- [ ] Cel i rodzaj zmiany (refaktor / zmiana UI lub zachowania / nowy widok)
+- [ ] Decyzje zatwierdzone przez użytkownika (treści, układ, zachowanie, progi i kwoty widoczne w UI)
+- [ ] Zakres: strony (`app/`), komponenty, stan klienta (`store/`, `hooks/`), backend (tak/nie)
+- [ ] Stany UI: ładowanie, pusty, błąd, sukces (dla każdego widoku/komponentu w zakresie)
+- [ ] Zachowanie dla gościa i zalogowanego, jeśli widok tego dotyczy
+- [ ] Etapy z zależnościami (co blokuje co, co może iść równolegle)
+- [ ] Dla każdego etapu: bramka weryfikacji (komenda + oczekiwany wynik + krok ręczny w przeglądarce)
+- [ ] Plan testów: unit (wyciągnięta logika) / E2E z uzasadnieniem zakresu
+- [ ] Plan aktualizacji dokumentacji (pliki + etap)
+- [ ] Poza zakresem (jawna lista)
+- [ ] Ryzyka i pytania otwarte (każde z propozycją decyzji)
+
+Brak któregokolwiek punktu = pytanie do użytkownika, nie założenie.
+
+## Szablon pliku planu
+
+```markdown
+# Plan: {nazwa zmiany}
+
+## Rodzaj i cel
+{refaktor | zmiana UI/zachowania | nowy widok} — {jedno zdanie, po co}
+
+## Decyzje (zatwierdzone)
+- {decyzja}
+
+## Zakres
+- Strony/komponenty: {pliki}
+- Stan klienta: {store/hooks: tak/nie, co}
+- Backend: {w zakresie / poza zakresem + wymagany kontrakt}
+- Stany UI: {loading / empty / error / sukces — gdzie}
+
+## Etapy
+1. **{Etap}** — {co} (*zależy od: …*)
+   - Weryfikacja: {komenda → oczekiwany wynik}
+   - Ręcznie: {adres → kroki → co widać}
+
+## Plan testów
+- Unit: {co}
+- E2E: {w zakresie / poza zakresem + powód}
+
+## Dokumentacja
+- {plik} — {co zaktualizować} (etap {n})
+
+## Poza zakresem
+{lista}
+
+## Ryzyka i pytania otwarte
+- {ryzyko/pytanie} → {decyzja lub „do ustalenia”}
+```
+
+## Szablon sekcji Postęp
+
+Dodaj lub aktualizuj w pliku planu po każdym etapie. Znaczniki: `[x]` zrobione, `[~]` w toku/częściowo, `[ ]` nierozpoczęte.
+
+```markdown
+## Post
+… (output truncated)
+````
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `format.ts`
+
+**Input:**
+
+- endLine: `80`
+- filePath: `c:\Projects\infoshare-accenture-ai-dev-1\lib\format.ts`
+- startLine: `1`
+
+**Result:**
+
+```
+/** Pure formatting helpers — no server-only imports, safe to use in Client Components */
+
+export function formatPrice(cents: number): string {
+  return (cents / 100).toLocaleString('pl-PL', { style: 'currency', currency: 'PLN' })
+}
+
+export function formatDeliveryCost(cents: number): string {
+  return cents === 0 ? 'Gratis' : formatPrice(cents)
+}
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `CartSummary.tsx`
+
+**Input:**
+
+- endLine: `120`
+- filePath: `c:\Projects\infoshare-accenture-ai-dev-1\components\cart\CartSummary.tsx`
+- startLine: `1`
+
+**Result:**
+
+```
+import Link from 'next/link'
+import { buttonVariants } from '@/components/ui/button'
+
+interface CartSummaryProps {
+  total: number
+  count: number
+  formatPrice: (cents: number) => string
+}
+
+export function CartSummary({ total, count, formatPrice }: CartSummaryProps) {
+  return (
+    <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-6 space-y-4">
+      <h2 className="text-xl font-bold">Podsumowanie</h2>
+
+      <div className="flex justify-between text-sm">
+        <span>Produkty ({count} szt.)</span>
+        <span>{formatPrice(total)}</span>
+      </div>
+
+      <div className="flex justify-between text-sm text-gray-500">
+        <span>Dostawa</span>
+        <span>obliczana przy kasie</span>
+      </div>
+
+      <hr className="border-border" />
+
+      <div className="flex justify-between font-bold text-lg">
+        <span>Łącznie</span>
+        <span>{formatPrice(total)}</span>
+      </div>
+
+      <Link href="/checkout/delivery" className={buttonVariants({ className: 'w-full justify-center' })}>
+        Przejdź do kasy
+      </Link>
+    </div>
+  )
+}
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `page.tsx`
+
+**Input:**
+
+- endLine: `230`
+- filePath: `c:\Projects\infoshare-accenture-ai-dev-1\app\(shop)\checkout\delivery\page.tsx`
+- startLine: `1`
+
+**Result:**
+
+```
+'use client'
+
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { AddressSchema, type AddressInput } from '@/lib/validations/checkout'
+import { useCart } from '@/hooks/useCart'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import type { z } from 'zod'
+
+type DeliveryMethod = 'COURIER' | 'PARCEL_LOCKER'
+
+const DELIVERY_OPTIONS = [
+  { id: 'COURIER' as DeliveryMethod, label: 'Kurier DHL', sublabel: '1–2 dni robocze', price: 1499 },
+  { id: 'PARCEL_LOCKER' as DeliveryMethod, label: 'Paczkomat InPost', sublabel: '2–3 dni robocze', price: 999 },
+]
+
+function formatPrice(grosze: number) {
+  return (grosze / 100).toLocaleString('pl-PL', { style: 'currency', currency: 'PLN' })
+}
+
+export default function DeliveryPage() {
+  const router = useRouter()
+  const { items, total, count, formatPrice: cartFormatPrice } = useCart()
+  const [selectedDelivery, setSelectedDelivery] = useState<DeliveryMethod>('COURIER')
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<z.input<typeof AddressSchema>, unknown, AddressInput>({
+    resolver: zodResolver(AddressSchema),
+    defaultValues: { country: 'PL' },
+  })
+
+  function onSubmit(data: AddressInput) {
+    sessionStorage.setItem(
+      'checkout_delivery',
+      JSON.stringify({
+        address: data,
+        deliveryMethod: selectedDelivery,
+      })
+    )
+    router.push('/checkout/payment')
+  }
+
+  const deliveryCost = DELIVERY_OPTIONS.find((o) => o.id === selectedDelivery)!.price
+  const orderTotal = total + deliveryCost
+
+  return (
+    <div className="max-w-6xl mx-auto px-4 py-8">
+      <h1 className="text-2xl font-bold mb-8">Dostawa i adres</h1>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Form colum
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `page.tsx`, lines 1 to 60
+
+**Input:**
+
+- endLine: `60`
+- filePath: `c:\Projects\infoshare-accenture-ai-dev-1\app\(shop)\checkout\payment\page.tsx`
+- startLine: `1`
+
+**Result:**
+
+```
+'use client'
+
+import { useState, useEffect, useMemo, useSyncExternalStore } from 'react'
+import { useRouter } from 'next/navigation'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { CardPaymentSchema, BlikSchema, type CardPaymentInput, type BlikInput } from '@/lib/validations/checkout'
+import { createOrder } from '@/lib/actions/checkout'
+import { useCart } from '@/hooks/useCart'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { DELIVERY_OPTIONS, type DeliveryMethod } from '@/lib/constants/checkout'
+
+type PaymentTab = 'CARD' | 'BLIK'
+
+function subscribeDelivery(listener: () => void) {
+  window.addEventListener('storage', listener)
+  return () => window.removeEventListener('storage', listener)
+}
+function getDeliverySnapshot() { return sessionStorage.getItem('checkout_delivery') }
+function getServerDeliverySnapshot(): undefined { return undefined }
+
+export default function PaymentPage() {
+  const router = useRouter()
+  const { items, total, formatPrice } = useCart()
+
+  const [selectedTab, setSelectedTab] = useState<PaymentTab>('CARD')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [paymentError, setPaymentError] = useState<string | null>(null)
+  const deliveryRaw = useSyncExternalStore(subscribeDelivery, getDeliverySnapshot, getServerDeliverySnapshot)
+  const deliveryMethod = useMemo<DeliveryMethod | null>(() => {
+    if (!deliveryRaw) return null
+    try {
+      const stored = JSON.parse(deliveryRaw)
+      return DELIVERY_OPTIONS.some((option) => option.id === stored.deliveryMethod) ? stored.deliveryMethod : null
+    } catch { return null }
+  }, [deliveryRaw])
+  const deliveryCost = DELIVERY_OPTIONS.find((option) => option.id === deliveryMethod)?.cost ?? 0
+
+  // CHK-07: 15-minute countdown timer
+  const [timeLeft, setTimeLeft] = useState(15 * 60)
+
+  useEf
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="search" data-tool-name="file_search"><details>
+<summary>Tool use: **file_search**</summary>
+
+Searched for files matching `**/{app/(shop)/cart/**,tests/e2e/**,tests/unit/**}`, 5 matches
+
+**Input:**
+
+- query: `{app/(shop)/cart/**,tests/e2e/**,tests/unit/**}`
+
+**Result:**
+
+```
+5 total results
+c:\Projects\infoshare-accenture-ai-dev-1\tests\unit\payment.test.ts
+c:\Projects\infoshare-accenture-ai-dev-1\tests\unit\checkout.test.ts
+c:\Projects\infoshare-accenture-ai-dev-1\tests\unit\session.test.ts
+c:\Projects\infoshare-accenture-ai-dev-1\tests\e2e\baseline.spec.ts
+c:\Projects\infoshare-accenture-ai-dev-1\app\(shop)\cart\page.tsx
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `page.tsx`, lines 60 to 312
+
+**Input:**
+
+- endLine: `340`
+- filePath: `c:\Projects\infoshare-accenture-ai-dev-1\app\(shop)\checkout\payment\page.tsx`
+- startLine: `60`
+
+**Result:**
+
+```
+        return prev - 1
+      })
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [router])
+
+  const minutes = Math.floor(timeLeft / 60).toString().padStart(2, '0')
+  const seconds = (timeLeft % 60).toString().padStart(2, '0')
+  const isUrgent = timeLeft < 2 * 60
+
+  // Card form
+  const {
+    register: registerCard,
+    handleSubmit: handleSubmitCard,
+    formState: { errors: cardErrors },
+  } = useForm<CardPaymentInput>({ resolver: zodResolver(CardPaymentSchema) })
+
+  // BLIK form
+  const {
+    register: registerBlik,
+    handleSubmit: handleSubmitBlik,
+    formState: { errors: blikErrors },
+  } = useForm<BlikInput>({ resolver: zodResolver(BlikSchema) })
+
+  async function submitPayment() {
+    const deliveryRaw = sessionStorage.getItem('checkout_delivery')
+    if (!deliveryRaw) {
+      router.replace('/checkout/delivery')
+      return
+    }
+    const delivery = JSON.parse(deliveryRaw)
+
+    setIsSubmitting(true)
+    setPaymentError(null)
+
+    try {
+      const result = await createOrder({
+        address: delivery.address,
+        deliveryMethod: delivery.deliveryMethod,
+        paymentMethod: selectedTab,
+      })
+
+      if (result.success) {
+        sessionStorage.removeItem('checkout_delivery')
+        router.push(`/checkout/success?orderId=${result.orderId}`)
+      } else {
+        setPaymentError(result.error || 'Błąd płatności')
+      }
+    } catch {
+      setPaymentError('Wystąpił nieoczekiwany błąd. Spróbuj ponownie.')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  return (
+    <div className="max-w-6xl mx-auto px-4 py-8">
+      {/* Countdown timer */}
+      <div
+        className={`flex items-center gap-2 mb-6 px-4 py-3 rounded-lg font-semibold text-lg ${
+          isUrgent ? 'bg-red-50 text-red-600 border border-red-200' : 'bg-amber-50 text-amber-700 border border-amber-200'
+        }`}
+      >
+        <span>⏱</span>
+        <span>
+          Czas na płatność:{' '}
+      
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `useCart.ts`, lines 1 to 80
+
+**Input:**
+
+- endLine: `80`
+- filePath: `c:\Projects\infoshare-accenture-ai-dev-1\hooks\useCart.ts`
+- startLine: `1`
+
+**Result:**
+
+```
+'use client'
+import { useState, useEffect, useCallback } from 'react'
+import { useCartStore } from '@/store/cart'
+import {
+  addToDbCart,
+  removeFromDbCart,
+  updateDbCartQuantity,
+  clearDbCart,
+  mergeGuestCart,
+} from '@/lib/actions/cart'
+import { formatPrice } from '@/lib/format'
+
+// Kształt pozycji koszyka — wspólny dla gościa i zalogowanego
+export type CartLineItem = {
+  productId: string
+  name: string
+  price: number       // grosze
+  quantity: number
+  imageUrl: string
+}
+
+export function useCart() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [dbItems, setDbItems] = useState<CartLineItem[]>([])
+  const [loadingDb, setLoadingDb] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  // Zustand (gość)
+  const guestItems = useCartStore((s) => s.items)
+  const guestAdd = useCartStore((s) => s.addItem)
+  const guestRemove = useCartStore((s) => s.removeItem)
+  const guestUpdate = useCartStore((s) => s.updateQuantity)
+  const guestClear = useCartStore((s) => s.clearCart)
+
+  // Hydrate guest cart po mount (skipHydration: true w store)
+  useEffect(() => {
+    useCartStore.persist.rehydrate()
+    let active = true
+    fetch('/api/auth/session', { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((session) => { if (active) setIsLoggedIn(!!session.user) })
+      .catch(() => { if (active) setError('Nie udało się sprawdzić sesji. Odśwież stronę.') })
+    return () => { active = false }
+  }, [])
+
+  // Pobierz DB koszyk dla zalogowanego
+  const fetchDbCart = useCallback(async () => {
+    setLoadingDb(true)
+    try {
+      const res = await fetch('/api/cart')
+      if (!res.ok) throw new Error('Nie udało się pobrać koszyka.')
+      const rows = await res.json()
+      setDbItems(
+        rows.map((r: { productId: string; product: { name: string; price: number; imageUrl: string }; quantity: number }) => ({
+          productId: r.productId,
+          name: r.produ
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `page.tsx`
+
+**Input:**
+
+- endLine: `80`
+- filePath: `c:\Projects\infoshare-accenture-ai-dev-1\app\(shop)\checkout\success\page.tsx`
+- startLine: `1`
+
+**Result:**
+
+```
+import { getOrderDetail } from '@/lib/actions/checkout'
+import { formatPrice } from '@/lib/products'
+import Link from 'next/link'
+import { notFound } from 'next/navigation'
+
+export default async function CheckoutSuccessPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ orderId?: string }>
+}) {
+  const { orderId } = await searchParams
+  if (!orderId) notFound()
+
+  const order = await getOrderDetail(orderId)
+  if (!order) notFound()
+
+  return (
+    <div className="max-w-2xl mx-auto px-4 py-12 text-center">
+      <div className="text-6xl mb-4">✅</div>
+      <h1 className="text-3xl font-bold mb-2">Zamówienie złożone!</h1>
+      <p className="text-gray-600 mb-8">
+        Dziękujemy za zakup. Potwierdzenie wysłano na Twój adres e-mail.
+      </p>
+
+      <div className="bg-gray-50 rounded-xl p-6 text-left mb-8">
+        <h2 className="font-semibold mb-4">
+          Szczegóły zamówienia #{order.id.slice(-8).toUpperCase()}
+        </h2>
+        <div className="space-y-2">
+          {order.items.map((item) => (
+            <div key={item.id} className="flex justify-between text-sm">
+              <span>
+                {item.productName} × {item.quantity}
+              </span>
+              <span>{formatPrice(item.price * item.quantity)}</span>
+            </div>
+          ))}
+          <div className="flex justify-between text-sm text-gray-500">
+            <span>Dostawa</span>
+            <span>{formatPrice(order.deliveryCost)}</span>
+          </div>
+        </div>
+        <div className="border-t mt-4 pt-4 flex justify-between font-bold">
+          <span>Razem</span>
+          <span>{formatPrice(order.total)}</span>
+        </div>
+      </div>
+
+      <div className="flex gap-4 justify-center">
+        <Link
+          href="/products"
+          className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+        >
+          Wróć do sklepu
+        </Link>
+        <Link
+          href="/account/orders"
+
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `page.tsx`, lines 50 to 96
+
+**Input:**
+
+- endLine: `100`
+- filePath: `c:\Projects\infoshare-accenture-ai-dev-1\app\(shop)\account\orders\[id]\page.tsx`
+- startLine: `50`
+
+**Result:**
+
+```
+          </div>
+        </div>
+
+        {/* Items */}
+        <div className="bg-white border rounded-xl p-4">
+          <h2 className="font-semibold mb-4">Pozycje zamówienia</h2>
+          <div className="space-y-3">
+            {order.items.map((item) => (
+              <div key={item.id} className="flex justify-between text-sm">
+                <span>
+                  {item.productName}{' '}
+                  <span className="text-gray-400">× {item.quantity}</span>
+                </span>
+                <span className="font-medium">{formatPrice(item.price * item.quantity)}</span>
+              </div>
+            ))}
+          </div>
+          <div className="border-t mt-4 pt-4 space-y-2">
+            <div className="flex justify-between text-sm text-gray-500">
+              <span>Dostawa</span>
+              <span>{formatPrice(order.deliveryCost)}</span>
+            </div>
+            <div className="flex justify-between font-bold">
+              <span>Razem</span>
+              <span>{formatPrice(order.total)}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Address */}
+        {order.address && (
+          <div className="bg-white border rounded-xl p-4">
+            <h2 className="font-semibold mb-3">Adres dostawy</h2>
+            <p className="text-sm">
+              {order.address.firstName} {order.address.lastName}
+            </p>
+            <p className="text-sm text-gray-600">{order.address.street}</p>
+            <p className="text-sm text-gray-600">
+              {order.address.postalCode} {order.address.city}
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="search" data-tool-name="grep_search"><details>
+<summary>Tool use: **grep_search**</summary>
+
+Searched for regex `^(import|describe|test|it)\b|^\s+(test|it)\(` (`**/tests/unit/checkout.test.ts`), 19 results
+
+**Input:**
+
+- includePattern: `tests/unit/checkout.test.ts`
+- isRegexp: `true`
+- query: `^(import|describe|test|it)\b|^\s+(test|it)\(`
+
+**Result:**
+
+```
+Found 19 matches in 1 file for "^(import|describe|test|it)\b|^\s+(test|it)\("
+
+tests/unit/checkout.test.ts
+1:import { test } from 'node:test'
+2:import assert from 'node:assert/strict'
+3:import { calculateDeliveryCost, calculateOrderTotals, FREE_DELIVERY_THRESHOLD } from '../../lib/constants/checkout'
+4:import { formatDeliveryCost, formatPrice } from '../../lib/format'
+8:test('kurier DHL poniżej progu (299,99 zł) zwraca cenę bazową 14,99 zł', () => {
+13:test('kurier DHL dokładnie na progu (300,00 zł) zwraca 0 (gratis)', () => {
+18:test('kurier DHL powyżej progu (300,01 zł) zwraca 0 (gratis)', () => {
+23:test('kurier DHL ze znacznie wyższą sumą (500,00 zł) zwraca 0 (gratis)', () => {
+28:test('paczkomat poniżej progu (100,00 zł) zwraca cenę bazową 9,99 zł', () => {
+33:test('paczkomat dokładnie na progu (300,00 zł) zwraca 9,99 zł (nie gratis)', () => {
+38:test('paczkomat ze znacznie wyższą sumą (500,00 zł) zwraca 9,99 zł (nie gratis)', () => {
+43:test('próg darmowej dostawy wynosi 30000 gr (300,00 zł)', () => {
+47:test('suma 0 gr zwraca koszt dostawy (bez przystępu do progu)', () => {
+54:test('suma liczona z cen i ilości; kurier na progu z wielu pozycji jest gratis', () => {
+62:test('kurier tuż poniżej progu dolicza 14,99 zł do total', () => {
+67:test('paczkomat powyżej progu dolicza 9,99 zł do total', () => {
+72:test('pusta lista pozycji daje subtotal 0 i koszt bazowy', () => {
+78:test('koszt 0 gr jest wyświetlany jako Gratis', () => {
+82:test('koszt dodatni jest wyświetlany jako cena', () => {
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `page.tsx`
+
+**Input:**
+
+- endLine: `120`
+- filePath: `c:\Projects\infoshare-accenture-ai-dev-1\app\(shop)\cart\page.tsx`
+- startLine: `1`
+
+**Result:**
+
+```
+'use client'
+
+import { useEffect } from 'react'
+import Link from 'next/link'
+import { useCart } from '@/hooks/useCart'
+import { useCartStore } from '@/store/cart'
+import { CartItem } from '@/components/cart/CartItem'
+import { CartSummary } from '@/components/cart/CartSummary'
+import { buttonVariants } from '@/components/ui/button'
+
+export default function CartPage() {
+  const { items, total, count, loading, error, removeItem, updateQty, formatPrice } = useCart()
+
+  // Rehydrate Zustand persist store on client mount
+  useEffect(() => {
+    useCartStore.persist.rehydrate()
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 py-12 text-center">
+        <p className="text-gray-500">Ładowanie koszyka...</p>
+      </div>
+    )
+  }
+
+  if (items.length === 0) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 py-12 text-center">
+        <h1 className="text-2xl font-bold mb-4">Twój koszyk jest pusty</h1>
+        <p className="text-gray-500 mb-8">Dodaj produkty do koszyka, aby kontynuować zakupy.</p>
+        <Link href="/products" className={buttonVariants()}>
+          Przeglądaj produkty
+        </Link>
+      </div>
+    )
+  }
+
+  return (
+    <div className="max-w-4xl mx-auto px-4 py-8">
+      <h1 className="text-3xl font-bold mb-8">Koszyk ({count} szt.)</h1>
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
+          {error}
+        </div>
+      )}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Cart items */}
+        <div className="lg:col-span-2 space-y-4">
+          {items.map((item) => (
+            <CartItem
+              key={item.productId}
+              item={item}
+              onRemove={removeItem}
+              onUpdateQty={updateQty}
+              formatPrice={formatPrice}
+            />
+          ))}
+        </div>
+        {/* Summary */}
+        <div>
+          <CartSummar
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `baseline.spec.ts`
+
+**Input:**
+
+- endLine: `200`
+- filePath: `c:\Projects\infoshare-accenture-ai-dev-1\tests\e2e\baseline.spec.ts`
+- startLine: `1`
+
+**Result:**
+
+```
+import { test, expect } from 'playwright/test'
+import { PrismaClient } from '@prisma/client'
+import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3'
+import { resolve } from 'node:path'
+
+const db = new PrismaClient({ adapter: new PrismaBetterSqlite3({ url: `file:${resolve('workshop.db').replaceAll('\\', '/')}` }) })
+test.afterAll(async () => { await db.$disconnect() })
+
+test('zdrowy zakup: katalog → koszyk gościa → sesja → dostawa → płatność → zamówienie', async ({ page, context }) => {
+  const errors: string[] = []
+  page.on('pageerror', (error) => errors.push(error.message))
+  page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()) })
+  await page.goto('/')
+  await expect(page.getByRole('link', { name: 'ShopEasy' })).toBeVisible()
+  await expect(page.locator('[data-nextjs-dialog]')).toHaveCount(0)
+  await page.screenshot({ path: '.workshop/browser-home.png', fullPage: true })
+  await page.goto('/products/sluchawki-soundmax-x3')
+  await expect(page.getByRole('heading', { name: 'Słuchawki bezprzewodowe SoundMax X3' })).toBeVisible()
+  await page.getByRole('button', { name: /Dodaj do koszyka/ }).click()
+  await page.goto('/cart')
+  await expect(page.getByRole('heading', { name: /Koszyk \(1 szt\.\)/ })).toBeVisible()
+  await page.getByRole('link', { name: 'Przejdź do kasy' }).click()
+  await expect(page).toHaveURL(/\/login\?next=/)
+  await page.getByLabel('E-mail', { exact: true }).fill('test@shopeasy.pl')
+  await page.getByLabel('Hasło', { exact: true }).fill('Test1234!')
+  await page.getByRole('button', { name: 'Zaloguj się', exact: true }).click()
+  await expect(page).toHaveURL(/\/checkout\/delivery/)
+  await expect.poll(async () => (await db.cartItem.findMany({ where: { userId: 'user-workshop' } })).length).toBe(1)
+  const cookie = (await context.cookies()).find((value) => value.name === 'shopeasy_session')
+  expect(cookie?.httpOnly).toBe(true)
+  await page.getByLabel('Imię', { exact: true }).fill('Jan')
+  await pa
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="search" data-tool-name="grep_search"><details>
+<summary>Tool use: **grep_search**</summary>
+
+Searched for regex `"(test|workshop|dev|build)[^"]*":` (`**/package.json`), 11 results
+
+**Input:**
+
+- includePattern: `package.json`
+- isRegexp: `true`
+- query: `"(test|workshop|dev|build)[^"]*":`
+
+**Result:**
+
+```
+Found 11 matches in 1 file for ""(test|workshop|dev|build)[^"]*":"
+
+package.json
+6:    "dev": "node scripts/dev.mjs",
+7:    "build": "next build",
+12:    "workshop:setup": "node scripts/workshop.mjs setup",
+13:    "workshop:reset": "node scripts/workshop.mjs reset",
+14:    "workshop:mode": "node scripts/workshop.mjs mode",
+15:    "test:unit": "tsx --test tests/unit/*.test.ts",
+16:    "test:integration": "node scripts/workshop.mjs integration",
+17:    "test:integration:direct": "tsx --import ./tests/integration/setup.ts --test tests/integration/*.test.ts",
+18:    "test:e2e": "playwright test",
+19:    "test:mcp": "node --test tests/mcp/*.test.mjs"
+46:  "devDependencies": {
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="search" data-tool-name="grep_search"><details>
+<summary>Tool use: **grep_search**</summary>
+
+Searched for regex `slug|price|stock` (`**/prisma/seed.ts`), 44 results
+
+**Input:**
+
+- includePattern: `prisma/seed.ts`
+- isRegexp: `true`
+- query: `slug|price|stock`
+
+**Result:**
+
+```
+Found 44 matches in 1 file for "slug|price|stock"
+
+prisma/seed.ts
+38:    data: { id: 'category-electronics', name: 'Elektronika', slug: 'elektronika' },
+41:    data: { id: 'category-clothing', name: 'Odzież', slug: 'odziez' },
+44:    data: { id: 'category-home', name: 'Dom i ogród', slug: 'dom-i-ogrod' },
+52:      slug: 'sluchawki-soundmax-x3',
+55:      price: 29999,
+56:      stock: 15,
+62:      slug: 'powerbank-ultracharge-20000',
+65:      price: 14999,
+66:      stock: 30,
+72:      slug: 'klawiatura-typepro-rgb',
+75:      price: 34999,
+76:      stock: 8,
+82:      slug: 'mysz-swiftclick-8k',
+85:      price: 19999,
+86:      stock: 20,
+93:      slug: 'kurtka-trailmaster-pro',
+96:      price: 24999,
+97:      stock: 12,
+103:      slug: 'tshirt-basictee',
+106:      price: 4999,
+107:      stock: 50,
+113:      slug: 'spodnie-comfortfit',
+116:      price: 8999,
+117:      stock: 25,
+123:      slug: 'sneakersy-urbanrun-pro',
+126:      price: 27999,
+127:      stock: 0, // celowo niedostępny – testowanie KAT-05
+134:      slug: 'swieca-zenlight-lawendowa',
+137:      price: 3999,
+138:      stock: 40,
+144:      slug: 'ekspres-brewmaster-500',
+147:      price: 18999,
+148:      stock: 7,
+154:      slug: 'noze-chefset-5',
+157:      price: 22999,
+158:      stock: 18,
+164:      slug: 'donica-terraform-l',
+167:      price: 5999,
+168:      stock: 35,
+175:    await db.product.create({ data: { ...product, id: `product-${product.slug}`, imageUrl: '/images/product.svg' } })
+179:  const tshirt = await db.product.findUniqueOrThrow({ where: { slug: 'tshirt-basictee' } })
+182:      data: { id: `variant-tshirt-${size}`, productId: tshirt.id, label: 'Rozmiar', value: size, stock: 10 },
+187:  const sneakers = await db.product.findUniqueOrThrow({ where: { slug: 'sneakersy-urbanrun-pro' } })
+190:      data: { id: `variant-sneakers-${size}`, productId: sneakers.id, label: 'Rozmiar EU', value: size, stock: 0 },
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="vscode_askQuestions"><details>
+<summary>Tool use: **vscode_askQuestions**</summary>
+
+Analyzing your answers...
+
+**Input:**
+
+- questions:
+
+```
+[
+  {
+    "header": "Brakująca kwota",
+    "options": [
+      {
+        "label": "Inline w CartSummary: Math.max(0, FREE_DELIVERY_THRESHOLD - total); pokrywa E2E",
+        "recommended": true
+      },
+      {
+        "label": "Backend dodaje czystą funkcję w lib/constants/checkout.ts (handoff), potem unit i użycie w UI"
+      }
+    ],
+    "question": "Gdzie wyliczać „brakuje X zł do darmowej dostawy”? lib/ jest poza moim zakresem."
+  },
+  {
+    "header": "Etykiety dostawy",
+    "options": [
+      {
+        "label": "Użyć wspólnej etykiety w jednej linii (zmiana wyglądu: znika podtytuł)",
+        "recommended": true
+      },
+      {
+        "label": "Zostawić lokalną mapę samych podtytułów po id (bez cen)"
+      }
+    ],
+    "question": "Strona dostawy ma lokalne etykiety z podtytułem (np. „Kurier DHL” + „1–2 dni robocze”), a wspólne DELIVERY_OPTIONS ma jedną etykietę „Kurier DHL (1–2 dni robocze)”. Co zrobić?"
+  },
+  {
+    "header": "Plik planu",
+    "options": [
+      {
+        "label": "Przepisać ten plik do szablonu planu, zachowując decyzje z analizy",
+        "recommended": true
+      },
+      {
+        "label": "Zapisać plan w docs/plan-darmowy-kurier-frontend-etapy.md, analizę zostawić"
+      }
+    ],
+    "question": "Analityk zapisał analizę w docs/plan-darmowy-kurier-frontend.md, czyli pod nazwą, której wymaga mój plan. Co zrobić?"
+  }
+]
+```
+
+
+**Result:**
+
+```
+{"answers":{"Brakująca kwota":{"selected":["Inline w CartSummary: Math.max(0, FREE_DELIVERY_THRESHOLD - total); pokrywa E2E"],"freeText":null,"skipped":false},"Etykiety dostawy":{"selected":["Zostawić lokalną mapę samych podtytułów po id (bez cen)"],"freeText":null,"skipped":false},"Plik planu":{"selected":["Przepisać ten plik do szablonu planu, zachowując decyzje z analizy"],"freeText":null,"skipped":false}}}
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `plan-darmowy-kurier-frontend.md`
+
+**Input:**
+
+- endLine: `60`
+- filePath: `c:\Projects\infoshare-accenture-ai-dev-1\docs\plan-darmowy-kurier-frontend.md`
+- startLine: `1`
+
+**Result:**
+
+```
+# Analiza: wdrożenie darmowego kuriera (frontend + dokumentacja + E2E)
+
+## Cel i ustalenia
+
+- Zgłoszenie PO (Kamil): klient widzi właściwą kwotę dostawy, a zamówienie zapisuje ten sam koszt.
+- „Uzgodniony kontrakt” = [docs/plan-darmowy-kurier.md](plan-darmowy-kurier.md) (próg 300 zł, tylko kurier DHL, paczkomat 9,99 zł bez zmian).
+- Backend jest gotowy (kroki 1-2 oraz testy unit i integracyjny). Pozostaje rozjazd: UI nadal liczy kuriera jako 14,99 zł.
+- Ustalenia z doprecyzowania:
+  - Wiersz „Dostawa” w koszyku przed wyborem metody: „Od 9,99 zł; gratis kurierem od 300 zł”.
+  - Poniżej progu: „Brakuje X zł do darmowej dostawy”. Po osiągnięciu progu: „Masz darmową dostawę kurierem DHL”.
+  - Koszt liczony na nowo na każdym kroku z aktualnego koszyka (w `sessionStorage` tylko id metody).
+  - Stare zamówienia bez zmian; 0 zł w nowych pokazujemy jako „Gratis”.
+  - Poprawki backendu dopuszczone, jeśli wyjdą w trakcie.
+
+## Backend (zakres)
+
+- Brak zaplanowanych zmian. Do sprawdzenia w trakcie: spójność `placeOrder` z kwotą pokazywaną w UI.
+
+## Frontend (zakres)
+
+- [components/cart/CartSummary.tsx](../components/cart/CartSummary.tsx): wiersz „Dostawa”, brakująca kwota, komunikat po osiągnięciu progu.
+- [app/(shop)/checkout/delivery/page.tsx](../app/(shop)/checkout/delivery/page.tsx): usunąć lokalne `DELIVERY_OPTIONS`, użyć `calculateOrderTotals`, „Gratis” z przekreśloną ceną 14,99 zł, przeliczenie sumy.
+- [app/(shop)/checkout/payment/page.tsx](../app/(shop)/checkout/payment/page.tsx): kwota wspólną funkcją zamiast `cost` z `DELIVERY_OPTIONS`.
+- [app/(shop)/checkout/success/page.tsx](../app/(shop)/checkout/success/page.tsx) i [app/(shop)/account/orders/[id]/page.tsx](../app/(shop)/account/orders/[id]/page.tsx): `formatDeliveryCost` zamiast `formatPrice` dla dostawy.
+- Dokumentacja: sekcja „Dostawa i zamówienie” w [docs/product-contract.md](product-contract.md).
+- Test E2E: próg i powrót do 14,99 zł po spadku poniżej progu; `tests/e2e/baseline.spec.ts`
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **plan-darmowy-kurier-frontend.md**</summary>
+
+@@ lines 1-42 @@
+
+```
+Plan: darmowy kurier DHL od 300 zł (frontend)
+
+Wejście: analiza Analityka (wcześniejsza treść tego pliku), [docs/plan-darmowy-kurier.md](plan-darmowy-kurier.md), kontrakt [docs/contracts/darmowy-kurier.md](contracts/darmowy-kurier.md).
+
+## Rodzaj i cel
+Zmiana UI/zachowania — klient widzi tę samą kwotę dostawy, którą zapisuje zamówienie (backend już liczy gratis od 300 zł).
+
+## Decyzje (zatwierdzone)
+- Próg: suma produktów >= 30000 gr, tylko kurier DHL; paczkomat 9,99 zł bez zmian.
+- Koszyk, wiersz „Dostawa”: „Od 9,99 zł; gratis kurierem od 300 zł”.
+- Koszyk poniżej progu: pasek + „Brakuje X zł do darmowej dostawy”; po progu: „Masz darmową dostawę kurierem DHL”.
+- Koszt liczony na nowo z aktualnego koszyka na każdym kroku; w `sessionStorage` tylko id metody.
+- 0 zł w zamówieniu = „Gratis”; stare zamówienia bez zmian (przed zmianą dostawa nigdy nie wynosiła 0).
+- Brakująca kwota: inline w `CartSummary` (`Math.max(0, FREE_DELIVERY_THRESHOLD - total)`), bez zmian w `lib/`.
+- Strona dostawy: lokalna mapa samych etykiet i podtytułów po id (bez cen); ceny z `DELIVERY_OPTIONS` i `calculateDeliveryCost`.
+- Brzmienie komunikatów wymaga potwierdzenia PO (ustalone w analizie, nie ze zgłoszenia).
+
+## Zakres
+- Strony/komponenty: `components/cart/CartSummary.tsx`, `app/(shop)/checkout/delivery/page.tsx`, `app/(shop)/checkout/payment/page.tsx`, `app/(shop)/checkout/success/page.tsx`, `app/(shop)/account/orders/[id]/page.tsx`
+- Stan klienta: bez zmian (`store/`, `hooks/` nietknięte).
+- Backend: poza zakresem (gotowy: `calculateDeliveryCost`, `calculateOrderTotals`, `formatDeliveryCost`, `placeOrder`). Poprawki tylko po zgłoszeniu i zgodzie.
+- Stany UI: koszyk pusty/loading/error bez zmian (obsługuje `cart/page.tsx`); delivery: pusty koszyk → suma 0, dostawa wg metody; sukces/historia: „Gratis” dla 0.
+- Gość i zalogowany: koszyk działa dla obu; checkout tylko zalogowany (proxy).
+
+## Etapy
+1. **Koszyk** — `CartSummary`: wiersz „Dostawa”, pasek postępu (`role="progressbar"`), komunikat po progu. „Łącznie” nadal = suma produktów.
+   - Weryfikacja: `npm run typecheck` i `npm run lint` → bez błędów.
+   - Ręcznie: `/cart` — słuchawki ×1 (299,99 zł): „Brakuje 0,01 zł…”; dodaj świecę (339,98 zł): „Masz darmową dostawę kurierem DHL”.
+2. **Strona dostawy** (*zależy od: 1 tylko wizualnie*) — usunięcie lokalnych `DELIVERY_OPTIONS` i `formatPrice`; `calculateOrderTotals` dla sumy i kosztu; kurier „Gratis” + przekreślone 14,99 zł; paczkomat zawsze 9,99 zł.
+   - Weryfikacja: `typecheck`, `lint`.
+   - Ręcznie: `/checkout/delivery` (po zalogowaniu) — 299,99 zł: kurier 14,99 zł, razem 314,98 zł; 339,98 zł: kurier Gratis, razem 339,98 zł; paczkomat 9,99 zł w obu.
+3. **Płatność** — `deliveryCost` przez `calculateOrderTotals`; kwota „Razem” zgodna z serwerem. Bez zmiany treści `* Cena zawiera dostawę.`
+   - Weryfikacja: `typecheck`, `lint`, `tests/e2e/baseline.spec.ts` nadal oczekuje 314,98 (uruchomienie po zgodzie).
+   - Ręcznie: `/checkout/payment` — kwota zgodna z krokiem dostawy.
+4. **Sukces i historia zamówień** — `formatDeliveryCost` zamiast `formatPrice` dla wiersza „Dostawa”.
+   - Weryfikacja: `typecheck`, `lint`.
+   - Ręcznie: zamówienie ≥ 300 zł kurierem → „Gratis”; zamówienie z 14,99 zł bez zmian.
+5. **Dokumentacja** — `docs/product-contract.md`, sekcja „Dostawa i zamówienie” (próg, gratis tylko kurier, liczenie na nowo).
+6. **E2E** (*zależy od: 1-4*) — patrz plan testów.
+
+## Plan testów
+- Unit: bez nowych (logika progu i „Gratis” już pokryta w `tests/unit/checkout.test.ts`; brakująca kwota to jedno odejmowanie inline i jest widoczna w E2E).
+- E2E (propozycja, do zatwierdzenia w etapie 6): jeden scenariusz — koszyk gościa: słuchawki + świeca → „Masz darmową dostawę…”; usunięcie świecy → „Brakuje 0,01 zł…”; dodanie świecy, logowanie, dostawa „Gratis”, płatność, `order.deliveryCost` = 0, sprzątanie zamówienia i koszyka w teście. `tests/e2e/baseline.spec.ts` bez zmian.
+- Etapy 2-4 bez osobnych testów: pokrywa je scenariusz E2E z etapu 6.
+
+## Dokumentacja
+- `docs/product-contract.md` — sekcja „Dostawa i zamówienie” (etap 5).
+- `docs/contracts/darmowy-kurier.md` — sekcja „Oczekiwania frontendu” tylko jeśli wyjdzie nowe pole lub stan (na razie brak).
+
+## Poza zakresem
+Schemat bazy, katalog, logowanie, mock płatności, paczkomat, rabaty, progi regionalne, migracja starych zamówień, `lib/`, `app/api/`, `tests/integration/`.
+
+## Ryzyka i pytania otwarte
+- Zmiana koszyka po zapisie dostawy → koszt liczony na nowo na stronie płatności z `useCart` (nie z `sessionStorage`) → zaplanowane w etapie 3.
+- Scalanie koszyka gościa przy logowaniu zmienia sumę → UI liczy z aktualnego koszyka, brak dodatkowej obsługi.
+- Lokalne `DELIVERY_OPTIONS` na stronie dostawy to rozjazd klient/serwer → usuwane w etapie 2.
+- Test E2E tworzy zamówienie i wymaga środowiska (`workshop:reset` i `dev` wołają `scripts/`, poza zakresem) → zapytam o sposób uruchomienia przed etapem 6.
+- Brzmienie komunikatów → do potwierdzenia przez PO
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="vscode_askQuestions"><details>
+<summary>Tool use: **vscode_askQuestions**</summary>
+
+Analyzing your answers...
+
+**Input:**
+
+- questions:
+
+```
+[
+  {
+    "header": "Plan",
+    "options": [
+      {
+        "label": "Zatwierdzam, zaczynaj od etapu 1",
+        "recommended": true
+      },
+      {
+        "label": "Mam poprawki do planu"
+      }
+    ],
+    "question": "Czy zatwierdzasz plan i mam zacząć etap 1 (CartSummary)?"
+  }
+]
+```
+
+
+**Result:**
+
+```
+{"answers":{"Plan":{"selected":["Zatwierdzam, zaczynaj od etapu 1"],"freeText":null,"skipped":false}}}
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read skill `frontend-implementation`: `implementation-rules.md`
+
+**Input:**
+
+- endLine: `120`
+- filePath: `c:\Projects\infoshare-accenture-ai-dev-1\.github\skills\frontend-implementation\references\implementation-rules.md`
+- startLine: `1`
+
+**Result:**
+
+```
+# Reguły implementacji etapu
+
+## Przed edycją
+
+- [ ] Przeczytaj pliki, które zmieniasz, oraz ich użycia (importy, miejsca renderowania). Nie edytuj na podstawie założeń.
+- [ ] Przejrzyj sąsiednie komponenty i `components/ui/`: użyj istniejących zamiast pisać nowe.
+- [ ] Stan plików mógł się zmienić (edycje użytkownika, cofnięcia). Sprawdź aktualną treść przed zmianą.
+- [ ] Etap ma jeden cel. Jeśli zmiana rośnie, podziel ją i zapytaj.
+
+## Zakres zmiany
+
+- Rób tylko to, co wynika z etapu. Bez dodatkowych funkcji, porządków i „ulepszeń”.
+- Refaktor: wygląd i zachowanie bez zmian. Zmiana w trakcie refaktoru = osobny etap.
+- Nie zmieniaj backendu (`lib/actions/`, `lib/`, `prisma/`) poza etapem. Brakujący kontrakt zgłoś pytaniem.
+- Nie czytaj i nie zmieniaj ścieżek poza zakresem z AGENTS.md.
+
+## Komponenty i Next.js
+
+- Granica serwer/klient: `'use client'` tylko tam, gdzie potrzebny stan, efekty lub handlery. Sprawdź konwencję sąsiednich plików w danym katalogu, zanim wybierzesz typ komponentu.
+- Do klienta nie trafiają sekrety ani logika, której wynik musi być wiarygodny (kwoty, uprawnienia). UI pokazuje to, co policzył serwer, lub używa wspólnej czystej funkcji z `lib/`.
+- Nie duplikuj reguł biznesowych (progi, stawki) w komponentach: importuj stałe/funkcje z `lib/`.
+- Stan: najpierw sprawdź `store/cart.ts` i `hooks/useCart.ts`. Nie wprowadzaj nowego stanu globalnego, jeśli wystarczy stan lokalny lub istniejący store.
+- Formularze: `react-hook-form` + schematy `zod` z `lib/validations/`, jeśli schemat już istnieje. Komunikaty błędów po polsku, powiązane z polem.
+- Powiadomienia: `sonner`. Ikony: `lucide-react`. Style: Tailwind, bez inline `style`, bez nowych bibliotek bez zgody.
+- Typy: propsy komponentów nazwane (`type XxxProps`), typy współdzielone w `types/index.ts`.
+
+## shadcn/ui na `@base-ui/react` (style `base-nova`)
+
+- Brak `asChild`. Polimorfizm przez prop `render`: `<Button render={<Link href="/x" />}>Tekst</Button>`; dzieci przekazu
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **CartSummary.tsx**</summary>
+
+@@ lines 20-22 @@
+
+```
+gap-4 text-sm text-gray-500">
+        <span>Dostawa</span>
+        <span className="text-right">
+          Od {formatPrice(LOWEST_DELIVERY_COST)}; gratis kurierem od {FREE_DELIVERY_THRESHOLD / 100} zł
+        </span>
+      </div>
+
+      <div className="space-y-1">
+        <progress
+          aria-label="Postęp do darmowej dostawy"
+          value={Math.min(total, FREE_DELIVERY_THRESHOLD)}
+          max={FREE_DELIVERY_THRESHOLD}
+          className="h-2 w-full overflow-hidden rounded-full [&::-webkit-progress-bar]:bg-muted [&::-webkit-progress-value]:bg-primary [&::-moz-progress-bar]:bg-primary"
+        />
+        <p className="text-sm">
+          {remaining > 0
+            ? `Brakuje ${formatPrice(remaining)} do darmowej dostawy`
+            : 'Masz darmową dostawę kurierem DHL'}
+        </p
+```
+
+@@ lines 11-11 @@
+
+```
+const remaining = Math.max(0, FREE_DELIVERY_THRESHOLD - total)
+
+  
+```
+
+@@ lines 3-3 @@
+
+```
+import { DELIVERY_OPTIONS, FREE_DELIVERY_THRESHOLD } from '@/lib/constants/checkout'
+
+const LOWEST_DELIVERY_COST = Math.min(...DELIVERY_OPTIONS.map((option) => option.cost))
+
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="vscode_askQuestions"><details>
+<summary>Tool use: **vscode_askQuestions**</summary>
+
+Analyzing your answers...
+
+**Input:**
+
+- questions:
+
+```
+[
+  {
+    "header": "Etap 1",
+    "options": [
+      {
+        "label": "OK, uruchom typecheck i lint",
+        "recommended": true
+      },
+      {
+        "label": "Mam korekty"
+      }
+    ],
+    "question": "Czy zmiana w koszyku jest zaakceptowana?"
+  }
+]
+```
+
+
+**Result:**
+
+```
+{"answers":{"Etap 1":{"selected":["OK, uruchom typecheck i lint"],"freeText":null,"skipped":false}}}
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` npm run typecheck && npm run lint`
+
+Weryfikacja etapu 1: typecheck i lint
+
+```bash
+npm run typecheck && npm run lint
+```
+
+**Result:**
+
+```
+
+> shopeasy-devs@0.1.0 typecheck
+> tsc --noEmit
+
+
+> shopeasy-devs@0.1.0 lint
+> eslint
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="vscode_askQuestions"><details>
+<summary>Tool use: **vscode_askQuestions**</summary>
+
+Analyzing your answers...
+
+**Input:**
+
+- questions:
+
+```
+[
+  {
+    "header": "Etap 1: wyniki i testy",
+    "options": [
+      {
+        "label": "Zatwierdzam, zaktualizuj Postęp i zrób commit WIP",
+        "recommended": true
+      },
+      {
+        "label": "Mam uwagi"
+      }
+    ],
+    "question": "Czy zatwierdzasz wyniki weryfikacji i plan testów (bez testów w tym etapie)?"
+  }
+]
+```
+
+
+**Result:**
+
+```
+{"answers":{"Etap 1: wyniki i testy":{"selected":["Zatwierdzam, zaktualizuj Postęp i zrób commit WIP"],"freeText":null,"skipped":false}}}
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read skill `frontend-implementation`: `commit-messages.md`
+
+**Input:**
+
+- endLine: `200`
+- filePath: `c:\Projects\infoshare-accenture-ai-dev-1\.github\skills\frontend-implementation\references\commit-messages.md`
+- startLine: `1`
+
+**Result:**
+
+````
+# Szablony commitów
+
+Język: polski, zgodnie z historią repozytorium. Pierwsza linia do ok. 72 znaków, bez kropki na końcu.
+
+## Commit WIP (koniec etapu)
+
+```
+WIP: {funkcja} - {obszar etapu}
+```
+
+Przykłady:
+- `WIP: darmowy kurier DHL od 300 zł - frontend (CartSummary, pasek postępu)`
+- `WIP: testy darmowego kuriera - E2E koszyk`
+
+Etap implementacji i jego testy mogą być jednym lub dwoma commitami WIP, zależnie od decyzji użytkownika.
+
+## Commit końcowy (po zatwierdzeniu etapu lub całości)
+
+```
+{Czasownik w trybie rozkazującym} {co} {opcjonalnie: gdzie}
+```
+
+Przykład: `Dodaj pasek postępu darmowej dostawy w podsumowaniu koszyka`
+
+Zmiany narzędziowe i dokumentacyjne (skrypty, README, AGENTS.md) idą w osobnym commicie, **bez** prefiksu WIP.
+
+## Reguły
+
+- [ ] Dodawaj pliki jawnie po nazwie (`git add plik1 plik2`). Nigdy `git add .` ani `-A`.
+- [ ] Nie dodawaj cudzych zmian: pliki zmodyfikowane przez użytkownika lub narzędzia, a niezwiązane z etapem (w tym zrzuty ekranu, `test-results/`), zostaw poza commitem i wymień w podsumowaniu.
+- [ ] Przed commitem uruchom `git status --short` i sprawdź listę.
+- [ ] Nie używaj `--no-verify`, `--amend` na opublikowanych commitach ani force push.
+- [ ] Nie pushuj bez wyraźnej prośby.
+- [ ] Plik planu z zaktualizowanym Postępem wchodzi do commitu WIP tego etapu. Hash tego commitu nie jest jeszcze znany, więc wpisz go w Postępie przy następnym etapie (do jego commitu).
+````
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` git status --short`
+
+Sprawdzenie listy zmienionych plików przed commitem
+
+```bash
+git status --short
+```
+
+**Result:**
+
+```
+ M components/cart/CartSummary.tsx
+ M docs/ai-sessions/2026-10-07_07-52-25Z-wdrozenie-polityki-dostawy.md
+ M docs/plan-darmowy-kurier-frontend.md
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="task" data-tool-name="manage_todo_list"><details>
+<summary>Tool use: **manage_todo_list**</summary>
+
+Created 6 todos
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **plan-darmowy-kurier-frontend.md**</summary>
+
+@@ lines 41-41 @@
+
+```
+ostęp (stan na 2026-10-07)
+
+- [x] **1. Koszyk** — `CartSummary`: wiersz „Dostawa” („Od 9,99 zł; gratis kurierem od 300 zł”), natywny `<progress>`, komunikaty „Brakuje X zł…” / „Masz darmową dostawę kurierem DHL”. Commit WIP (hash w następnym etapie).
+- [ ] **2. Strona dostawy** — nierozpoczęty.
+- [ ] **3. Płatność** — nierozpoczęty.
+- [ ] **4. Sukces i historia zamówień** — nierozpoczęty.
+- [ ] **5. Dokumentacja** — nierozpoczęty.
+- [ ] **6. E2E** — nierozpoczęty.
+
+**Weryfikacja:** `typecheck` i `lint` przechodzą. Nie uruchamiano: `test:unit`, `test:e2e`, `build`. Nie sprawdzano w przeglądarce przez agenta (ręcznie zaakceptowano kod).
+
+**Uwaga:** UI pozostałych kroków checkoutu nadal liczy kuriera po staremu (14,99 zł) do końca etapów 2-4.
+
+## P
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` git add components/cart/CartSummary.tsx docs/plan-darmowy-kurier-frontend.md...`
+
+Commit WIP etapu 1 z jawnie wskazanymi plikami
+
+```bash
+git add components/cart/CartSummary.tsx docs/plan-darmowy-kurier-frontend.md && git commit -m "WIP: darmowy kurier DHL od 300 zł - frontend (CartSummary, pasek postępu)" && git status --short
+```
+
+**Result:**
+
+```
+[main 1e507a0] WIP: darmowy kurier DHL od 300 zł - frontend (CartSummary, pasek postępu)
+ 2 files changed, 81 insertions(+), 31 deletions(-)
+ M docs/ai-sessions/2026-10-07_07-52-25Z-wdrozenie-polityki-dostawy.md
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="vscode_askQuestions"><details>
+<summary>Tool use: **vscode_askQuestions**</summary>
+
+Analyzing your answers...
+
+**Input:**
+
+- questions:
+
+```
+[
+  {
+    "header": "Etap 2",
+    "options": [
+      {
+        "label": "Tak, zaczynaj etap 2 (strona dostawy)",
+        "recommended": true
+      },
+      {
+        "label": "Zatrzymaj się tutaj"
+      }
+    ],
+    "question": "Czy zaczynać etap 2?"
+  }
+]
+```
+
+
+**Result:**
+
+```
+{"answers":{"Etap 2":{"selected":["Tak, zaczynaj etap 2 (strona dostawy)"],"freeText":null,"skipped":false}}}
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **page.tsx**</summary>
+
+@@ lines 185-189 @@
+
+```
+subtotal)}</span>
+              </div>
+              <div className="flex justify-between text-gray-600">
+                <span>Dostawa</span>
+                <span>{formatDeliveryCost
+```
+
+@@ lines 122-150 @@
+
+```
+{
+                  const optionCost = calculateDeliveryCost(subtotal, option.id)
+                  return (
+                    <button
+                      key={option.id}
+                      type="button"
+                      onClick={() => setSelectedDelivery(option.id)}
+                      className={`w-full flex items-center justify-between p-4 rounded-lg border-2 transition-colors text-left ${
+                        selectedDelivery === option.id
+                          ? 'border-blue-600 bg-blue-50'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                            selectedDelivery === option.id ? 'border-blue-600' : 'border-gray-400'
+                          }`}
+                        >
+                          {selectedDelivery === option.id && (
+                            <div className="w-2 h-2 rounded-full bg-blue-600" />
+                          )}
+                        </div>
+                        <div>
+                          <p className="font-medium">{DELIVERY_TEXT[option.id].label}</p>
+                          <p className="text-sm text-gray-500">{DELIVERY_TEXT[option.id].sublabel}</p>
+                        </div>
+                      </div>
+                      <span className="font-semibold">
+                        {optionCost < option.cost && (
+                          <s className="mr-2 font-normal text-gray-500">{formatPrice(option.cost)}</s>
+                        )}
+                        {formatDeliveryCost(optionCost)}
+                      </span>
+                    </button>
+                  )
+                }
+```
+
+@@ lines 50-51 @@
+
+```
+{ subtotal, deliveryCost, total: orderTotal } = calculateOrderTotals(items, selectedDelivery)
+```
+
+@@ lines 12-27 @@
+
+```
+{ DELIVERY_OPTIONS, calculateDeliveryCost, calculateOrderTotals, type DeliveryMethod } from '@/lib/constants/checkout'
+import { formatDeliveryCost, formatPrice } from '@/lib/format'
+import type { z } from 'zod'
+
+const DELIVERY_TEXT: Record<DeliveryMethod, { label: string; sublabel: string }> = {
+  COURIER: { label: 'Kurier DHL', sublabel: '1–2 dni robocze' },
+  PARCEL_LOCKER: { label: 'Paczkomat InPost', sublabel: '2–3 dni robocze' },
+}
+
+export default function DeliveryPage() {
+  const router = useRouter()
+  const { items
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="vscode_askQuestions"><details>
+<summary>Tool use: **vscode_askQuestions**</summary>
+
+Analyzing your answers...
+
+**Input:**
+
+- questions:
+
+```
+[
+  {
+    "header": "Etap 2",
+    "options": [
+      {
+        "label": "OK, uruchom typecheck i lint",
+        "recommended": true
+      },
+      {
+        "label": "Mam korekty"
+      }
+    ],
+    "question": "Czy zmiana na stronie dostawy jest zaakceptowana?"
+  }
+]
+```
+
+
+**Result:**
+
+```
+{"answers":{"Etap 2":{"selected":["OK, uruchom typecheck i lint"],"freeText":null,"skipped":false}}}
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` npm run typecheck && npm run lint`
+
+Weryfikacja etapu 2: typecheck i lint
+
+```bash
+npm run typecheck && npm run lint
+```
+
+**Result:**
+
+```
+
+> shopeasy-devs@0.1.0 typecheck
+> tsc --noEmit
+
+
+> shopeasy-devs@0.1.0 lint
+> eslint
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="vscode_askQuestions"><details>
+<summary>Tool use: **vscode_askQuestions**</summary>
+
+Analyzing your answers...
+
+**Input:**
+
+- questions:
+
+```
+[
+  {
+    "header": "Etap 2: wyniki i testy",
+    "options": [
+      {
+        "label": "Zatwierdzam, zaktualizuj Postęp i zrób commit WIP",
+        "recommended": true
+      },
+      {
+        "label": "Mam uwagi"
+      }
+    ],
+    "question": "Czy zatwierdzasz wyniki weryfikacji i plan testów (bez testów w tym etapie)?"
+  }
+]
+```
+
+
+**Result:**
+
+```
+{"answers":{"Etap 2: wyniki i testy":{"selected":["Zatwierdzam, zaktualizuj Postęp i zrób commit WIP"],"freeText":null,"skipped":false}}}
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **plan-darmowy-kurier-frontend.md**</summary>
+
+@@ lines 52-52 @@
+
+```
+łatności, sukcesu i historii zamówień nadal liczy lub formatuje dostawę po staremu do końca etapów 3
+```
+
+@@ lines 43-44 @@
+
+```
+`1e507a0` (WIP).
+- [x] **2. Strona dostawy** — usunięte lokalne `DELIVERY_OPTIONS` i `formatPrice`; koszt i suma z `calculateOrderTotals`/`calculateDeliveryCost`; kurier „Gratis” z przekreśloną ceną bazową; lokalna mapa `DELIVERY_TEXT` tylko na etykiety. Commit WIP (hash w następnym etapie)
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` git add "app/\(shop\)/checkout/delivery/page.tsx" docs/plan-darmowy-kurier-fro...`
+
+Commit WIP etapu 2 z jawnie wskazanymi plikami
+
+```bash
+git add "app/(shop)/checkout/delivery/page.tsx" docs/plan-darmowy-kurier-frontend.md && git commit -m "WIP: darmowy kurier DHL od 300 zł - frontend (strona dostawy)" && git status --short
+```
+
+**Result:**
+
+```
+[main 2a6cafc] WIP: darmowy kurier DHL od 300 zł - frontend (strona dostawy)
+ 2 files changed, 48 insertions(+), 45 deletions(-)
+ M docs/ai-sessions/2026-10-07_07-52-25Z-wdrozenie-polityki-dostawy.md
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="vscode_askQuestions"><details>
+<summary>Tool use: **vscode_askQuestions**</summary>
+
+Analyzing your answers...
+
+**Input:**
+
+- questions:
+
+```
+[
+  {
+    "header": "Etap 3",
+    "options": [
+      {
+        "label": "Tak, zaczynaj etap 3 (płatność)",
+        "recommended": true
+      },
+      {
+        "label": "Zatrzymaj się tutaj"
+      }
+    ],
+    "question": "Czy zaczynać etap 3?"
+  }
+]
+```
+
+
+**Result:**
+
+```
+{"answers":{"Etap 3":{"selected":["Tak, zaczynaj etap 3 (płatność)"],"freeText":null,"skipped":false}}}
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **page.tsx**</summary>
+
+@@ lines 300-300 @@
+
+```
+orderTotal
+```
+
+@@ lines 39-39 @@
+
+```
+orderTotal = deliveryMethod ? calculateOrderTotals(items, deliveryMethod).total : total
+```
+
+@@ lines 13-13 @@
+
+```
+calculateOrderTotals, 
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="vscode_askQuestions"><details>
+<summary>Tool use: **vscode_askQuestions**</summary>
+
+Analyzing your answers...
+
+**Input:**
+
+- questions:
+
+```
+[
+  {
+    "header": "Etap 3",
+    "options": [
+      {
+        "label": "OK, uruchom typecheck i lint",
+        "recommended": true
+      },
+      {
+        "label": "Mam korekty"
+      }
+    ],
+    "question": "Czy zmiana na stronie płatności jest zaakceptowana?"
+  }
+]
+```
+
+
+**Result:**
+
+```
+{"answers":{"Etap 3":{"selected":["OK, uruchom typecheck i lint"],"freeText":null,"skipped":false}}}
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` npm run typecheck && npm run lint`
+
+Weryfikacja etapu 3: typecheck i lint
+
+```bash
+npm run typecheck && npm run lint
+```
+
+**Result:**
+
+```
+
+> shopeasy-devs@0.1.0 typecheck
+> tsc --noEmit
+
+app/(shop)/checkout/payment/page.tsx:102:18 - error TS2339: Property 'success' does not exist on type '{ error: string; fieldErrors: { firstName?: string[] | undefined; lastName?: string[] | undefined; street?: string[] | undefined; city?: string[] | undefined; postalCode?: string[] | undefined; country?: string[] | undefined; phone?: string[] | undefined; }; ... 4 more ...; orderNumber?: undefined; } | { ...; } | { ...'.
+  Property 'success' does not exist on type '{ error: string; }'.
+
+102       if (result.success) {
+                     ~~~~~~~
+
+app/(shop)/checkout/payment/page.tsx:104:57 - error TS2339: Property 'orderId' does not exist on type '{ error: string; fieldErrors: { firstName?: string[] | undefined; lastName?: string[] | undefined; street?: string[] | undefined; city?: string[] | undefined; postalCode?: string[] | undefined; country?: string[] | undefined; phone?: string[] | undefined; }; ... 4 more ...; orderNumber?: undefined; } | { ...; } | { ...'.
+  Property 'orderId' does not exist on type '{ error: string; }'.
+
+104         router.push(`/checkout/success?orderId=${result.orderId}`)
+                                                            ~~~~~~~
+
+
+Found 2 errors in the same file, starting at: app/(shop)/checkout/payment/page.tsx:102
+
+Command exited with code 2
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` git status --short && git diff HEAD --stat`
+
+Sprawdzenie, co zmieniono względem HEAD
+
+```bash
+git status --short && git diff HEAD --stat
+```
+
+**Result:**
+
+```
+ M app/(shop)/checkout/payment/page.tsx
+ M docs/ai-sessions/2026-10-07_07-52-25Z-wdrozenie-polityki-dostawy.md
+warning: in the working copy of 'docs/ai-sessions/2026-10-07_07-52-25Z-wdrozenie-polityki-dostawy.md', LF will be replaced by CRLF the next time Git touches it
+ app/(shop)/checkout/payment/page.tsx               |   6 +-
+ ...6-10-07_07-52-25Z-wdrozenie-polityki-dostawy.md | 531 +++++++++++++++++++++
+ 2 files changed, 534 insertions(+), 3 deletions(-)
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `checkout.ts`
+
+**Input:**
+
+- endLine: `80`
+- filePath: `c:\Projects\infoshare-accenture-ai-dev-1\lib\actions\checkout.ts`
+- startLine: `1`
+
+**Result:**
+
+```
+'use server'
+import { revalidatePath } from 'next/cache'
+import { db } from '@/lib/db'
+import { getSessionUser } from '@/lib/session'
+import { placeOrder, type CreateOrderParams } from '@/lib/orders'
+
+export async function createOrder(params: CreateOrderParams) {
+  const user = await getSessionUser()
+  if (!user) return { error: 'Zaloguj się, aby złożyć zamówienie.' }
+
+  const result = await placeOrder(user, params)
+  if ('success' in result) revalidatePath('/account/orders')
+  return result
+}
+
+// ─── Historia zamówień ─────────────────────────────────────
+
+export async function getOrderHistory() {
+  const user = await getSessionUser()
+  if (!user) return []
+
+  return db.order.findMany({
+    where: { userId: user.id },
+    include: { items: true, address: true },
+    orderBy: { createdAt: 'desc' },
+  })
+}
+
+export async function getOrderDetail(orderId: string) {
+  const user = await getSessionUser()
+  if (!user) return null
+
+  return db.order.findFirst({
+    where: { id: orderId, userId: user.id },
+    include: {
+      items: { include: { product: true } },
+      address: true,
+      statusHistory: { orderBy: { createdAt: 'asc' } },
+    },
+  })
+}
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `orders.ts`, lines 1 to 60
+
+**Input:**
+
+- endLine: `60`
+- filePath: `c:\Projects\infoshare-accenture-ai-dev-1\lib\orders.ts`
+- startLine: `1`
+
+**Result:**
+
+```
+import { db } from '@/lib/db'
+import { sendEmail } from '@/lib/email'
+import { processPayment } from '@/lib/payment'
+import { AddressSchema } from '@/lib/validations/checkout'
+import { formatPrice, formatDeliveryCost } from '@/lib/format'
+import type { PaymentMethod } from '@prisma/client'
+import type { SessionUser } from '@/types'
+import { DELIVERY_OPTIONS, calculateOrderTotals, type DeliveryMethod } from '@/lib/constants/checkout'
+
+// Bez 'use server': eksport tutaj nie może stać się publiczną akcją przyjmującą dowolnego użytkownika.
+
+export type CreateOrderParams = {
+  address: {
+    firstName: string
+    lastName: string
+    street: string
+    city: string
+    postalCode: string
+    country?: string
+    phone: string
+  }
+  paymentMethod: 'CARD' | 'BLIK'
+  deliveryMethod: DeliveryMethod
+}
+
+export async function placeOrder(user: SessionUser, params: CreateOrderParams) {
+  // Waliduj adres
+  const addrParsed = AddressSchema.safeParse(params.address)
+  if (!addrParsed.success) {
+    return { error: 'Nieprawidłowe dane adresu.', fieldErrors: addrParsed.error.flatten().fieldErrors }
+  }
+
+  // Pobierz koszyk
+  const cartItems = await db.cartItem.findMany({
+    where: { userId: user.id },
+    include: { product: true },
+  })
+
+  if (cartItems.length === 0) return { error: 'Koszyk jest pusty.' }
+
+  // KOS-08: sprawdź dostępność produktów
+  const unavailable = cartItems.filter((i) => i.product.stock === 0)
+  if (unavailable.length > 0) {
+    return {
+      error: 'Niektóre produkty w koszyku stały się niedostępne.',
+      unavailableProducts: unavailable.map((i) => i.product.name),
+    }
+  }
+
+  const deliveryOption = DELIVERY_OPTIONS.find((o) => o.id === params.deliveryMethod)
+  if (!deliveryOption) return { error: 'Nieprawidłowa metoda dostawy.' }
+
+  const { subtotal, deliveryCost, total } = calculateOrderTotals(
+    cartItems.map((i) => ({ price: i.product.price, quantity: i.quantity })),
+    params.deliveryMethod,
+ 
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` git stash push "app/\(shop\)/checkout/payment/page.tsx" && npm run typecheck; ...`
+
+Sprawdzenie, czy błąd typów występuje także bez mojej zmiany (stash i przywrócenie)
+
+```bash
+git stash push "app/(shop)/checkout/payment/page.tsx" && npm run typecheck; git stash pop
+```
+
+**Result:**
+
+```
+Saved working directory and index state WIP on main: 2a6cafc WIP: darmowy kurier DHL od 300 zł - frontend (strona dostawy)
+
+> shopeasy-devs@0.1.0 typecheck
+> tsc --noEmit
+
+app/(shop)/checkout/payment/page.tsx:102:18 - error TS2339: Property 'success' does not exist on type '{ error: string; fieldErrors: { firstName?: string[] | undefined; lastName?: string[] | undefined; street?: string[] | undefined; city?: string[] | undefined; postalCode?: string[] | undefined; country?: string[] | undefined; phone?: string[] | undefined; }; ... 4 more ...; orderNumber?: undefined; } | { ...; } | { ...'.
+  Property 'success' does not exist on type '{ error: string; }'.
+
+102       if (result.success) {
+                     ~~~~~~~
+
+app/(shop)/checkout/payment/page.tsx:104:57 - error TS2339: Property 'orderId' does not exist on type '{ error: string; fieldErrors: { firstName?: string[] | undefined; lastName?: string[] | undefined; street?: string[] | undefined; city?: string[] | undefined; postalCode?: string[] | undefined; country?: string[] | undefined; phone?: string[] | undefined; }; ... 4 more ...; orderNumber?: undefined; } | { ...; } | { ...'.
+  Property 'orderId' does not exist on type '{ error: string; }'.
+
+104         router.push(`/checkout/success?orderId=${result.orderId}`)
+                                                            ~~~~~~~
+
+
+Found 2 errors in the same file, starting at: app/(shop)/checkout/payment/page.tsx:102
+
+On branch main
+Your branch is ahead of 'origin/main' by 2 commits.
+  (use "git push" to publish your local commits)
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+        modified:   app/(shop)/checkout/payment/page.tsx
+        modified:   docs/ai-sessions/2026-10-07_07-52-25Z-wdrozenie-polityki-dostawy.md
+
+no changes added to commit (use "git add" and/or "git commit -a")
+Dropped refs/stash@{0} (846b2d9d87a46813a3fefa1243dddd64d5
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="vscode_askQuestions"><details>
+<summary>Tool use: **vscode_askQuestions**</summary>
+
+Analyzing your answers...
+
+**Input:**
+
+- questions:
+
+```
+[
+  {
+    "header": "Błąd typecheck",
+    "message": "Błąd występuje też na HEAD, bez mojej zmiany (sprawdzone przez stash). Przyczyna: `createOrder` w `lib/actions/checkout.ts` zwraca `{ error }` bez `success`, a strona płatności czyta `result.success` i `result.orderId`. Wcześniejsze przebiegi `typecheck` w etapach 1-2 przeszły bez tego błędu; nie umiem tego wyjaśnić.",
+    "options": [
+      {
+        "label": "Zaweżenie po stronie frontendu: 'success' in result w payment/page.tsx (w moim zakresie)",
+        "recommended": true
+      },
+      {
+        "label": "Handoff do backendu: poprawić typ zwracany createOrder w lib/ (poza moim zakresem)"
+      }
+    ],
+    "question": "Jak naprawić błąd typów w payment/page.tsx (result.success / result.orderId)?"
+  }
+]
+```
+
+
+**Result:**
+
+```
+{"answers":{"Błąd typecheck":{"selected":["Handoff do backendu: poprawić typ zwracany createOrder w lib/ (poza moim zakresem)"],"freeText":null,"skipped":false}}}
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **darmowy-kurier.md**</summary>
+
+@@ lines 32-32 @@
+
+```
+
+## Oczekiwania frontendu
+
+- `createOrder` (`lib/actions/checkout.ts`) ma zwracać jednolitą unię z dyskryminatorem: `{ success: true, orderId, ... } | { success: false, error, ... }`. Dziś gałąź niezalogowanego zwraca `{ error }` bez `success`, więc `payment/page.tsx` (`result.success`, `result.orderId`) nie przechodzi `npm run typecheck`. Błąd istnieje na HEAD, niezależnie od zmian frontendu.
+
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="task" data-tool-name="manage_todo_list"><details>
+<summary>Tool use: **manage_todo_list**</summary>
+
+Starting: *Revise payment page for delivery options* (3/6)
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="vscode_askQuestions"><details>
+<summary>Tool use: **vscode_askQuestions**</summary>
+
+Analyzing your answers...
+
+**Input:**
+
+- questions:
+
+```
+[
+  {
+    "header": "Dalej",
+    "options": [
+      {
+        "label": "Czekam na backend; etap 3 zostaje niezacommitowany",
+        "recommended": true
+      },
+      {
+        "label": "Zacommituj etap 3 jako WIP ze znanym błędem typecheck i idź do etapu 4"
+      },
+      {
+        "label": "Idź do etapu 4 bez commitu etapu 3"
+      }
+    ],
+    "question": "Jak kontynuować do czasu poprawki backendu?"
+  }
+]
+```
+
+
+**Result:**
+
+```
+{"answers":{"Dalej":{"selected":["Czekam na backend; etap 3 zostaje niezacommitowany"],"freeText":null,"skipped":false}}}
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+Czekam na poprawkę backendu. Etap 3 zostaje niezacommitowany: zmiana jest w `page.tsx`, a sekcja „Oczekiwania frontendu” w `darmowy-kurier.md`.
+
+Gdy  dostanie  w każdej gałęzi, wrócę do tego etapu. Zrobię wtedy `typecheck` i `lint`, zaktualizuję Postęp i zacommituję WIP. Potem przejdę do etapu 4 (sukces i historia zamówień).
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="task" data-tool-name="manage_todo_list"><details>
+<summary>Tool use: **manage_todo_list**</summary>
+
+Starting: *Revise payment page for delivery options* (4/4)
+</details></tool-use>
+
+---
+
+_**User (2026-10-07 08:14:57Z)**_
+
+Frontend jest gotowy wg planu. Dokończ brakującą część backendową. Przeczytaj plan frontendu (sekcja Postęp i pytania o kontrakt) oraz docs/contracts/, potem zacznij od Fazy A skilla backend-implementation.
+
+---
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="search" data-tool-name="file_search"><details>
+<summary>Tool use: **file_search**</summary>
+
+Searched for files matching `**/docs/contracts/**`, 1 match
+
+**Input:**
+
+- query: `docs/contracts/**`
+
+**Result:**
+
+```
+1 total result
+c:\Projects\infoshare-accenture-ai-dev-1\docs\contracts\darmowy-kurier.md
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `plan-darmowy-kurier-frontend.md`
+
+**Input:**
+
+- endLine: `200`
+- filePath: `c:\Projects\infoshare-accenture-ai-dev-1\docs\plan-darmowy-kurier-frontend.md`
+- startLine: `1`
+
+**Result:**
+
+```
+# Plan: darmowy kurier DHL od 300 zł (frontend)
+
+Wejście: analiza Analityka (wcześniejsza treść tego pliku), [docs/plan-darmowy-kurier.md](plan-darmowy-kurier.md), kontrakt [docs/contracts/darmowy-kurier.md](contracts/darmowy-kurier.md).
+
+## Rodzaj i cel
+Zmiana UI/zachowania — klient widzi tę samą kwotę dostawy, którą zapisuje zamówienie (backend już liczy gratis od 300 zł).
+
+## Decyzje (zatwierdzone)
+- Próg: suma produktów >= 30000 gr, tylko kurier DHL; paczkomat 9,99 zł bez zmian.
+- Koszyk, wiersz „Dostawa”: „Od 9,99 zł; gratis kurierem od 300 zł”.
+- Koszyk poniżej progu: pasek + „Brakuje X zł do darmowej dostawy”; po progu: „Masz darmową dostawę kurierem DHL”.
+- Koszt liczony na nowo z aktualnego koszyka na każdym kroku; w `sessionStorage` tylko id metody.
+- 0 zł w zamówieniu = „Gratis”; stare zamówienia bez zmian (przed zmianą dostawa nigdy nie wynosiła 0).
+- Brakująca kwota: inline w `CartSummary` (`Math.max(0, FREE_DELIVERY_THRESHOLD - total)`), bez zmian w `lib/`.
+- Strona dostawy: lokalna mapa samych etykiet i podtytułów po id (bez cen); ceny z `DELIVERY_OPTIONS` i `calculateDeliveryCost`.
+- Brzmienie komunikatów wymaga potwierdzenia PO (ustalone w analizie, nie ze zgłoszenia).
+
+## Zakres
+- Strony/komponenty: `components/cart/CartSummary.tsx`, `app/(shop)/checkout/delivery/page.tsx`, `app/(shop)/checkout/payment/page.tsx`, `app/(shop)/checkout/success/page.tsx`, `app/(shop)/account/orders/[id]/page.tsx`
+- Stan klienta: bez zmian (`store/`, `hooks/` nietknięte).
+- Backend: poza zakresem (gotowy: `calculateDeliveryCost`, `calculateOrderTotals`, `formatDeliveryCost`, `placeOrder`). Poprawki tylko po zgłoszeniu i zgodzie.
+- Stany UI: koszyk pusty/loading/error bez zmian (obsługuje `cart/page.tsx`); delivery: pusty koszyk → suma 0, dostawa wg metody; sukces/historia: „Gratis” dla 0.
+- Gość i zalogowany: koszyk działa dla obu; checkout tylko zalogowany (proxy).
+
+## Etapy
+1. **Koszyk** — `CartSummary`: wiersz „Dostawa”, pasek postępu (`role
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `darmowy-kurier.md`
+
+**Input:**
+
+- endLine: `200`
+- filePath: `c:\Projects\infoshare-accenture-ai-dev-1\docs\contracts\darmowy-kurier.md`
+- startLine: `1`
+
+**Result:**
+
+```
+# Kontrakt: darmowy kurier DHL od 300 zł
+
+Wspólne reguły dla backendu i frontendu. Zatwierdzone przez PO (Kamil). Źródło decyzji: [docs/plan-darmowy-kurier.md](../plan-darmowy-kurier.md).
+
+## Reguły
+
+- Próg: suma produktów (bez dostawy) >= 30000 gr włącznie.
+- Gratis dotyczy tylko `COURIER`. `PARCEL_LOCKER` zawsze 999 gr.
+- Poniżej progu kurier kosztuje 1499 gr.
+- Kwotę zawsze liczy `calculateDeliveryCost` / `calculateOrderTotals` z `lib/constants/checkout.ts`. Zakaz lokalnych kopii cen i `DELIVERY_OPTIONS`.
+- W `sessionStorage` zapisujemy wyłącznie id metody. Koszt jest liczony na nowo z aktualnego koszyka na każdym kroku.
+- Serwer przy zapisie zamówienia liczy kwotę sam; kwota z klienta nie jest źródłem prawdy.
+
+## Prezentacja
+
+| Miejsce | Zachowanie |
+|---------|------------|
+| Koszyk, wiersz „Dostawa” (metoda jeszcze niewybrana) | „Od 9,99 zł; gratis kurierem od 300 zł” |
+| Koszyk, poniżej progu | „Brakuje X zł do darmowej dostawy” (pasek/komunikat) |
+| Koszyk, próg osiągnięty | „Masz darmową dostawę kurierem DHL” |
+| Dostawa, kurier >= progu | „Gratis” + przekreślone 14,99 zł; suma bez dostawy |
+| Dostawa, kurier < progu | 14,99 zł |
+| Płatność, sukces, szczegóły zamówienia | `formatDeliveryCost`: 0 gr = „Gratis” |
+| E-mail potwierdzający | „Gratis” (już zaimplementowane w `lib/orders.ts`) |
+
+## Przypadki graniczne
+
+- 29999 gr: kurier 1499 gr, razem 31498 gr w zakupie bazowym (słuchawki SoundMax X3) pozostaje bez zmian.
+- 30000 i 30001 gr: kurier 0 gr.
+- Spadek poniżej progu po zmianie koszyka: kurier wraca do 1499 gr.
+- Zamówienia sprzed zmiany: bez migracji; wartości zapisane w bazie wyświetlane bez zmian.
+
+## Oczekiwania frontendu
+
+- `createOrder` (`lib/actions/checkout.ts`) ma zwracać jednolitą unię z dyskryminatorem: `{ success: true, orderId, ... } | { success: false, error, ... }`. Dziś gałąź niezalogowanego zwraca `{ error }` bez `success`, więc `payment/page.tsx` (`result.success`, `result.orderId`) nie przechodzi `npm
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read skill `backend-implementation`
+
+**Input:**
+
+- endLine: `250`
+- filePath: `c:\Projects\infoshare-accenture-ai-dev-1\.github\skills\backend-implementation\SKILL.md`
+- startLine: `1`
+
+**Result:**
+
+```
+---
+name: backend-implementation
+description: 'Planuje i wdraża zmianę backendu etapami z bramkami weryfikacji przez człowieka: refaktor, zmiana funkcjonalności lub nowa funkcja. Use when: plan zmiany, implementacja backendu, etapy/fazy, wdrożenie krok po kroku, server actions, logika biznesowa, baza danych, integracje (email, płatności), plan testów, aktualizacja postępu w planie, commit WIP.'
+argument-hint: 'ścieżka do pliku planu LUB nazwa zmiany/funkcji do zaplanowania'
+---
+
+# Implementacja backendu etapami
+
+Prowadzi zmianę od planu do wdrożenia małymi etapami. Po każdym etapie zatrzymuje się na bramce, na której decyduje człowiek.
+
+## Wejście
+
+- Ścieżka do istniejącego planu zmiany, albo
+- nazwa zmiany lub funkcji, którą trzeba najpierw zaplanować (wtedy zacznij od Fazy A i zapisz plan według [szablonu](./references/plan-template.md)).
+
+## Zasady nadrzędne
+
+- Nie zgaduj i nie zakładaj. Brak informacji lub niejasność → zapytaj przez `vscode_askQuestions` i **zatrzymaj się**.
+- Trzymaj się zakresu etapu. Nie przechodź do frontendu, E2E ani dokumentacji, jeśli nie należą do bieżącego etapu.
+- Respektuj ścieżki poza zakresem z AGENTS.md: nie czytaj ich, nie edytuj, nie uruchamiaj skryptów z tych katalogów, także pośrednio przez komendy npm. Gdy potrzebna komenda je woła, poszukaj alternatywy z AGENTS.md/README albo zapytaj.
+- Jeśli narzędzie edycji jest wyłączone, nie obchodź tego terminalem. Powiedz o tym i podaj gotową treść do wklejenia.
+- Bramki `[STOP]` są obowiązkowe: nie przechodź dalej bez odpowiedzi użytkownika.
+
+## Faza A. Plan (bez edycji kodu)
+
+1. Wczytaj plan lub zbierz kontekst z kodu (read-only). Sprawdź [checklistę planu](./references/plan-template.md); braki i niejasności zgłoś pytaniami. `[STOP]` do odpowiedzi.
+2. Określ **rodzaj**: refaktor (bez zmiany zachowania) / zmiana funkcjonalności / nowa funkcja. Od niego zależą testy (patrz [reguły testów](./references/testing-rules.md)).
+3. Określ **zakres i integracje**: modu
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` git log --oneline -8 && git status --short && git diff HEAD --stat -- . ':\!d...`
+
+Sprawdzenie historii i stanu repo
+
+```bash
+git log --oneline -8 && git status --short && git diff HEAD --stat -- . ':!docs/ai-sessions'
+```
+
+**Result:**
+
+```
+2a6cafc (HEAD -> main) WIP: darmowy kurier DHL od 300 zł - frontend (strona dostawy)
+1e507a0 WIP: darmowy kurier DHL od 300 zł - frontend (CartSummary, pasek postępu)
+b962697 (origin/main, origin/HEAD) Analityk: zgłoszenie + plan -> handoff : developer
+59b4005 Orkietracja agentów i handoff - Analityk -> Backend / Frontend -> SKILLs
+49491f6 E04 — Limit ilości — TDD i trzy poziomy kontroli
+7bcfaf3 Slajdy
+39d5560 /create-skill analiza-zgłoszenia  -  one-off albo interaktywna sesja "Grill-Me"
+4514421 SKILL - frontend implementation - na podstawie istniejącego skilla 'backend implementation'
+ M app/(shop)/checkout/payment/page.tsx
+ M docs/ai-sessions/2026-10-07_07-52-25Z-wdrozenie-polityki-dostawy.md
+ M docs/contracts/darmowy-kurier.md
+ app/(shop)/checkout/payment/page.tsx | 6 +++---
+ docs/contracts/darmowy-kurier.md     | 4 ++++
+ 2 files changed, 7 insertions(+), 3 deletions(-)
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `orders.ts`, lines 45 to 116
+
+**Input:**
+
+- endLine: `160`
+- filePath: `c:\Projects\infoshare-accenture-ai-dev-1\lib\orders.ts`
+- startLine: `45`
+
+**Result:**
+
+```
+      error: 'Niektóre produkty w koszyku stały się niedostępne.',
+      unavailableProducts: unavailable.map((i) => i.product.name),
+    }
+  }
+
+  const deliveryOption = DELIVERY_OPTIONS.find((o) => o.id === params.deliveryMethod)
+  if (!deliveryOption) return { error: 'Nieprawidłowa metoda dostawy.' }
+
+  const { subtotal, deliveryCost, total } = calculateOrderTotals(
+    cartItems.map((i) => ({ price: i.product.price, quantity: i.quantity })),
+    params.deliveryMethod,
+  )
+
+  // Przetwórz płatność (mock)
+  const paymentResult = await processPayment(total)
+  if (!paymentResult.success) {
+    return { error: paymentResult.message, code: paymentResult.code }
+  }
+
+  // Zapisz adres
+  const address = await db.address.create({
+    data: { userId: user.id, ...addrParsed.data },
+  })
+
+  // Utwórz zamówienie ze snapshotem produktów (CHK-10)
+  const order = await db.order.create({
+    data: {
+      userId: user.id,
+      addressId: address.id,
+      paymentMethod: params.paymentMethod as PaymentMethod,
+      paymentStatus: 'PAID',
+      transactionId: paymentResult.transactionId,
+      deliveryMethod: params.deliveryMethod,
+      deliveryCost,
+      subtotal,
+      total,
+      items: {
+        create: cartItems.map((i) => ({
+          productId: i.productId,
+          productName: i.product.name, // snapshot
+          price: i.product.price,       // snapshot
+          quantity: i.quantity,
+        })),
+      },
+      statusHistory: {
+        create: { status: 'ACCEPTED', note: 'Zamówienie przyjęte do realizacji' },
+      },
+    },
+  })
+
+  // Wyczyść koszyk
+  await db.cartItem.deleteMany({ where: { userId: user.id } })
+
+  // Email potwierdzający (CHK-10)
+  sendEmail({
+    to: user.email,
+    subject: `✅ Potwierdzenie zamówienia #${order.orderNumber}`,
+    html: `
+      <h2>Zamówienie przyjęte!</h2>
+      <p>Numer zamówienia: <strong>${order.orderNumber}</strong></p>
+      <table>
+        ${cartItems.map((i) => `<
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `page.tsx`, lines 1 to 120
+
+**Input:**
+
+- endLine: `120`
+- filePath: `c:\Projects\infoshare-accenture-ai-dev-1\app\(shop)\checkout\payment\page.tsx`
+- startLine: `1`
+
+**Result:**
+
+```
+'use client'
+
+import { useState, useEffect, useMemo, useSyncExternalStore } from 'react'
+import { useRouter } from 'next/navigation'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { CardPaymentSchema, BlikSchema, type CardPaymentInput, type BlikInput } from '@/lib/validations/checkout'
+import { createOrder } from '@/lib/actions/checkout'
+import { useCart } from '@/hooks/useCart'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { DELIVERY_OPTIONS, calculateOrderTotals, type DeliveryMethod } from '@/lib/constants/checkout'
+
+type PaymentTab = 'CARD' | 'BLIK'
+
+function subscribeDelivery(listener: () => void) {
+  window.addEventListener('storage', listener)
+  return () => window.removeEventListener('storage', listener)
+}
+function getDeliverySnapshot() { return sessionStorage.getItem('checkout_delivery') }
+function getServerDeliverySnapshot(): undefined { return undefined }
+
+export default function PaymentPage() {
+  const router = useRouter()
+  const { items, total, formatPrice } = useCart()
+
+  const [selectedTab, setSelectedTab] = useState<PaymentTab>('CARD')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [paymentError, setPaymentError] = useState<string | null>(null)
+  const deliveryRaw = useSyncExternalStore(subscribeDelivery, getDeliverySnapshot, getServerDeliverySnapshot)
+  const deliveryMethod = useMemo<DeliveryMethod | null>(() => {
+    if (!deliveryRaw) return null
+    try {
+      const stored = JSON.parse(deliveryRaw)
+      return DELIVERY_OPTIONS.some((option) => option.id === stored.deliveryMethod) ? stored.deliveryMethod : null
+    } catch { return null }
+  }, [deliveryRaw])
+  const orderTotal = deliveryMethod ? calculateOrderTotals(items, deliveryMethod).total : total
+
+  // CHK-07: 15-minute countdown timer
+  const [timeLeft, setTimeLeft] = useState
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read skill `backend-implementation`: `plan-template.md`
+
+**Input:**
+
+- endLine: `200`
+- filePath: `c:\Projects\infoshare-accenture-ai-dev-1\.github\skills\backend-implementation\references\plan-template.md`
+- startLine: `1`
+
+**Result:**
+
+````
+# Szablon planu i checklista
+
+## Checklista planu wejściowego
+
+Plan jest gotowy do implementacji, gdy zawiera:
+
+- [ ] Cel i rodzaj zmiany (refaktor / zmiana funkcjonalności / nowa funkcja)
+- [ ] Decyzje zatwierdzone przez użytkownika (z liczbami: progi, kwoty, limity)
+- [ ] Zakres: moduły/pliki, baza danych, usługi zewnętrzne, frontend (tak/nie)
+- [ ] Etapy z zależnościami (co blokuje co, co może iść równolegle)
+- [ ] Dla każdego etapu: bramka weryfikacji dla człowieka (komenda + oczekiwany wynik)
+- [ ] Plan testów: unit / integracja / E2E z uzasadnieniem zakresu
+- [ ] Plan aktualizacji dokumentacji (pliki + etap)
+- [ ] Poza zakresem (jawna lista)
+- [ ] Ryzyka i pytania otwarte (każde z propozycją decyzji)
+
+Brak któregokolwiek punktu = pytanie do użytkownika, nie założenie.
+
+## Szablon pliku planu
+
+```markdown
+# Plan: {nazwa zmiany}
+
+## Rodzaj i cel
+{refaktor | zmiana funkcjonalności | nowa funkcja} — {jedno zdanie, po co}
+
+## Decyzje (zatwierdzone)
+- {decyzja}
+
+## Zakres
+- Backend: {moduły/pliki}
+- Baza danych: {tak/nie, co}
+- Usługi zewnętrzne: {email/płatności/brak}
+- Frontend: {w zakresie / poza zakresem}
+
+## Etapy
+1. **{Etap}** — {co} (*zależy od: …*)
+   - Weryfikacja: {komenda → oczekiwany wynik; ewentualny krok ręczny}
+
+## Plan testów
+- Unit: {co}
+- Integracja: {co}
+- E2E: {w zakresie / poza zakresem + powód}
+
+## Dokumentacja
+- {plik} — {co zaktualizować} (etap {n})
+
+## Poza zakresem
+{lista}
+
+## Ryzyka i pytania otwarte
+- {ryzyko/pytanie} → {decyzja lub „do ustalenia”}
+```
+
+## Szablon sekcji Postęp
+
+Dodaj lub aktualizuj w pliku planu po każdym etapie. Znaczniki: `[x]` zrobione, `[~]` w toku/częściowo, `[ ]` nierozpoczęte.
+
+```markdown
+## Postęp (stan na {RRRR-MM-DD})
+
+- [x] **1. {Etap}** — {co faktycznie zrobiono; kluczowe symbole/pliki}. Commit `{hash}` (WIP).
+- [~] **2. {Etap}** — {co zrobione, co zostało}.
+  - [x] {podzadanie, np. testy unit — wynik}
+  - [ ] {podzadanie}
+- [ ] **3. {Etap}** —
+… (output truncated)
+````
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read skill `backend-implementation`: `testing-rules.md`
+
+**Input:**
+
+- endLine: `200`
+- filePath: `c:\Projects\infoshare-accenture-ai-dev-1\.github\skills\backend-implementation\references\testing-rules.md`
+- startLine: `1`
+
+**Result:**
+
+```
+# Reguły testów
+
+## Zasada podziału: każda warstwa sprawdza co innego
+
+| Warstwa | Sprawdza | Nie sprawdza |
+|---------|----------|--------------|
+| Unit | Logikę czystych funkcji: obliczenia, progi, wartości brzegowe, formatowanie | Bazy, sesji, usług |
+| Integracja | Połączenie: czy akcja/serwis używa logiki, zapisuje wynik w bazie, wywołuje email/płatność | Wartości brzegowych logiki (to robi unit) |
+| E2E | Ścieżkę użytkownika w przeglądarce | Logiki ani zapisu (to robią niższe warstwy) |
+
+**Nie powtarzaj tego samego scenariusza na dwóch poziomach.** Jeśli chcesz sprawdzić więcej logiki, przenieś ją do czystej funkcji i przetestuj jednostkowo. Integracji zostaw minimum potrzebne do potwierdzenia połączenia.
+
+## Co wchodzi w zakres wg rodzaju zmiany
+
+- **Refaktor:** istniejące testy muszą przejść bez zmian. Nowy test tylko dla nowego seamu, który wcześniej nie był testowalny.
+- **Zmiana funkcjonalności:** unit na nową logikę + wartości brzegowe; 1 test integracyjny potwierdzający zapis/efekt; E2E tylko jeśli zmienia się ścieżka użytkownika (i etap obejmuje frontend).
+- **Nowa funkcja:** unit na logikę, integracja na główny przepływ (szczęśliwa ścieżka + najważniejszy błąd), E2E jeśli jest UI.
+
+E2E jest poza zakresem etapu backendowego, chyba że etap obejmuje frontend lub użytkownik wprost o to prosi. Przy planie testów zapisz tę decyzję jawnie.
+
+## Reguły pisania testów
+
+- Unit: wartości brzegowe (poniżej / na / powyżej progu), pusta lista wejściowa, wartości ujemne lub zerowe tam, gdzie mają znaczenie.
+- Integracja: używaj danych z seeda (nie twórz produktów/użytkowników, jeśli inne testy zależą od ich liczby). Dane tworzone w teście sprzątaj w `after`.
+- Integracja: test musi przejść niezależnie od kolejności i nie zostawiać stanu w bazie.
+- Asertuj efekt, który widzi użytkownik lub baza (zapisane wartości, treść emaila), nie szczegóły implementacji.
+- Nazwa testu opisuje zachowanie, po polsku, jak istniejące testy.
+- Nie osłabiaj ani
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="search" data-tool-name="grep_search"><details>
+<summary>Tool use: **grep_search**</summary>
+
+Searched for regex `createOrder|placeOrder|fieldErrors|unavailableProducts|\.orderNumber` (`**/{app,components,hooks,lib,store,tests,types}/**`), 19 results
+
+**Input:**
+
+- includePattern: `{app,components,hooks,lib,store,tests,types}/**`
+- isRegexp: `true`
+- query: `createOrder|placeOrder|fieldErrors|unavailableProducts|\.orderNumber`
+
+**Result:**
+
+```
+Found 19 matches in 8 files for "createOrder|placeOrder|fieldErrors|unavailableProducts|\.orderNumber"
+
+app/(shop)/account/orders/[id]/page.tsx
+29:        <h1 className="text-2xl font-bold">Zamówienie #{order.orderNumber}</h1>
+
+app/(shop)/account/orders/page.tsx
+36:                  <p className="font-mono text-sm font-medium">#{order.orderNumber}</p>
+
+app/(shop)/checkout/payment/page.tsx
+8:import { createOrder } from '@/lib/actions/checkout'
+96:      const result = await createOrder({
+
+app/api/auth/register/route.ts
+13:    return NextResponse.json({ error: parsed.error.flatten().fieldErrors }, { status: 400 })
+
+app/api/auth/reset-password/confirm/route.ts
+12:    return NextResponse.json({ error: parsed.error.flatten().fieldErrors }, { status: 400 })
+
+lib/actions/checkout.ts
+5:import { placeOrder, type CreateOrderParams } from '@/lib/orders'
+7:export async function createOrder(params: CreateOrderParams) {
+11:  const result = await placeOrder(user, params)
+
+lib/orders.ts
+12:export type CreateOrderParams = {
+26:export async function placeOrder(user: SessionUser, params: CreateOrderParams) {
+30:    return { error: 'Nieprawidłowe dane adresu.', fieldErrors: addrParsed.error.flatten().fieldErrors }
+46:      unavailableProducts: unavailable.map((i) => i.product.name),
+101:    subject: `✅ Potwierdzenie zamówienia #${order.orderNumber}`,
+104:      <p>Numer zamówienia: <strong>${order.orderNumber}</strong></p>
+114:  return { success: true as const, orderId: order.id, orderNumber: order.orderNumber }
+
+tests/integration/checkout.test.ts
+3:import { placeOrder } from '../../lib/orders'
+45:  const result = await placeOrder(
+72:  const result = await placeOrder(
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="list_dir"><details>
+<summary>Tool use: **list_dir**</summary>
+
+Read `integration`
+
+**Input:**
+
+- path: `c:\Projects\infoshare-accenture-ai-dev-1\tests\integration`
+
+**Result:**
+
+```
+catalog.test.ts
+checkout.test.ts
+setup.ts
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `integration-tests.instructions.md`
+
+**Input:**
+
+- endLine: `120`
+- filePath: `c:\Projects\infoshare-accenture-ai-dev-1\.github\instructions\integration-tests.instructions.md`
+- startLine: `1`
+
+**Result:**
+
+```
+---
+description: "Use when writing, editing or reviewing integration tests in tests/integration: checkout, katalog, zamówienia, cleanup bazy, asercje, przypadki brzegowe. Zastosuj jeśli recenzujesz, zmieniasz lub dodajesz testy integracyjne w tests/integration"
+applyTo: "tests/integration/*.test.ts"
+---
+
+# Zasady testów integracyjnych
+
+## Izolacja
+- Używaj wyłącznie bazy `.workshop/integration.db`; nigdy `workshop.db`.
+- `DATABASE_URL` ustawia `tests/integration/setup.ts` ładowany przez `--import` (`npm run test:integration:direct`); nie importuj `lib/db` w `setup.ts`.
+- Nie zależ od stanu zostawionego przez inne testy ani poprzednie uruchomienia.
+- Testy używające konta `test@shopeasy.pl` nie mogą działać równolegle.
+
+## Struktura
+- Arrange / Act / Assert, oddzielone pustą linią.
+- Jeden test = jedna reguła biznesowa; nazwa opisuje zachowanie (np. „zamówienie kurierem >= 300 zł zapisuje deliveryCost 0").
+- Używaj `node:test` i `node:assert/strict`; bez dodatkowych frameworków.
+
+## Dane
+- Dane referencyjne pobieraj z bazy (`findUniqueOrThrow`), nie hardkoduj cen ani ID.
+- Przed asercją zweryfikuj założenie wejściowe (np. suma koszyka przekracza próg darmowej dostawy).
+- Powtarzalny arrange wynoś do helperów/fabryk.
+- Używaj wyłącznie danych fikcyjnych.
+- Oczekiwane wartości wyprowadzaj z `docs/product-contract.md`; nie testuj reguł spoza kontraktu.
+
+## Sprzątanie
+- Usuń wszystko, co test utworzył: zamówienie, pozycje zamówienia, adres, pozycje koszyka.
+- Przed napisaniem cleanupu sprawdź kaskady w `prisma/schema.prisma`; nie zakładaj, że `deleteMany` usuwa powiązane rekordy.
+- Przywróć zmodyfikowany stan (np. `stock`), jeśli `placeOrder` go zmienia.
+- Cleanup w `after`/`finally`, aby działał także po nieudanym teście; zawsze `db.$disconnect()`.
+- Stan w pamięci (`clearEmails()`) czyść w `before` i `after`.
+
+## Asercje
+- Sprawdzaj wynik funkcji, stan bazy i efekty uboczne (e-mail, koszyk), nie tylko jedno z nich.
+- Mail: asercja na o
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="search" data-tool-name="grep_search"><details>
+<summary>Tool use: **grep_search**</summary>
+
+Searched for regex `success|code|message` (`**/lib/payment.ts`), 7 results
+
+**Input:**
+
+- includePattern: `lib/payment.ts`
+- isRegexp: `true`
+- query: `success|code|message`
+
+**Result:**
+
+```
+Found 7 matches in 1 file for "success|code|message"
+
+lib/payment.ts
+9:      success: false,
+10:      code: 'CARD_DECLINED',
+11:      message: 'Karta odrzucona przez bank.',
+20:      success: false,
+21:      code: 'TIMEOUT',
+22:      message: 'Przekroczono czas oczekiwania na odpowiedź bramki.',
+28:    success: true,
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `checkout.test.ts`
+
+**Input:**
+
+- endLine: `130`
+- filePath: `c:\Projects\infoshare-accenture-ai-dev-1\tests\integration\checkout.test.ts`
+- startLine: `1`
+
+**Result:**
+
+```
+import { after, before, test } from 'node:test'
+import assert from 'node:assert/strict'
+import { placeOrder } from '../../lib/orders'
+import { clearEmails, getEmailsTo } from '../../lib/email'
+import { db } from '../../lib/db'
+
+const USER_EMAIL = 'test@shopeasy.pl'
+const ADDRESS = {
+  firstName: 'Jan',
+  lastName: 'Testowy',
+  street: 'Testowa 1',
+  city: 'Warszawa',
+  postalCode: '00-001',
+  phone: '123456789',
+}
+
+let orderId: string | undefined
+
+before(async () => {
+  clearEmails()
+  await db.cartItem.deleteMany({ where: { user: { email: USER_EMAIL } } })
+})
+
+after(async () => {
+  if (orderId) {
+    const order = await db.order.findUnique({ where: { id: orderId } })
+    await db.order.deleteMany({ where: { id: orderId } })
+    if (order) await db.address.deleteMany({ where: { id: order.addressId } })
+  }
+  clearEmails()
+  await db.$disconnect()
+})
+
+test('zamówienie kurierem >= 300 zł zapisuje deliveryCost 0 i wysyła mail z Gratis', async () => {
+  const user = await db.user.findUniqueOrThrow({ where: { email: USER_EMAIL } })
+  const mouse = await db.product.findUniqueOrThrow({ where: { slug: 'mysz-swiftclick-8k' } })
+  const powerbank = await db.product.findUniqueOrThrow({ where: { slug: 'powerbank-ultracharge-20000' } })
+  await db.cartItem.createMany({
+    data: [
+      { userId: user.id, productId: mouse.id, quantity: 1 },
+      { userId: user.id, productId: powerbank.id, quantity: 1 },
+    ],
+  })
+
+  const result = await placeOrder(
+    { id: user.id, email: user.email, name: user.name },
+    { address: ADDRESS, paymentMethod: 'CARD', deliveryMethod: 'COURIER' },
+  )
+
+  assert.ok('success' in result, 'zamówienie powinno się powieść')
+  orderId = result.orderId
+
+  const order = await db.order.findUniqueOrThrow({ where: { id: result.orderId } })
+  assert.equal(order.subtotal, mouse.price + powerbank.price)
+  assert.equal(order.deliveryCost, 0)
+  assert.equal(order.total, order.subtotal)
+
+  assert.equal(awa
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="vscode_askQuestions"><details>
+<summary>Tool use: **vscode_askQuestions**</summary>
+
+Analyzing your answers...
+
+**Input:**
+
+- questions:
+
+```
+[
+  {
+    "header": "Stan frontendu",
+    "message": "Plan frontendu i git pokazują: etapy 1-2 zacommitowane (`1e507a0`, `2a6cafc`), etap 3 (płatność) tylko w working tree i czeka na `typecheck`, etapy 4-6 (sukces/historia, product-contract, E2E) nierozpoczęte. Sekcja Postęp nie mówi, że frontend jest gotowy.",
+    "options": [
+      {
+        "label": "Etapy 3-6 zostają u frontendu; ja robię tylko backend",
+        "recommended": true
+      },
+      {
+        "label": "Frontend jest już zrobiony poza planem (opisz co)"
+      }
+    ],
+    "question": "Jak rozumieć „frontend jest gotowy wg planu”?"
+  },
+  {
+    "header": "Zakres backendu",
+    "message": "Jedyna brakująca część backendu, jaką znalazłem, to kontrakt z sekcji „Oczekiwania frontendu”: `createOrder` i `placeOrder` nie zwracają `success` w każdej gałęzi, przez co `payment/page.tsx` nie przechodzi `typecheck` (błąd jest też na HEAD).",
+    "multiSelect": true,
+    "options": [
+      {
+        "label": "Tak, tylko ujednolicenie wyniku createOrder/placeOrder",
+        "recommended": true
+      },
+      {
+        "label": "Jest jeszcze coś innego (opisz)"
+      }
+    ],
+    "question": "Czy to cała „brakująca część backendowa”?"
+  },
+  {
+    "header": "Kształt wyniku",
+    "message": "Dodanie `success: false` zmienia znaczenie `'success' in result`: będzie prawdziwe też przy błędzie. Dotyczy to `createOrder` (`revalidatePath`) i istniejącego testu integracyjnego (`assert.ok('success' in result)`), który przestałby cokolwiek sprawdzać. Zmienię je na `result.success`.",
+    "options": [
+      {
+        "label": "A: `success: false` w każdej gałęzi błędu (zgodne z obecnym frontendem), poprawić `createOrder` i test",
+        "recommended": true
+      },
+      {
+        "label": "B: bez `success: false`, tylko jawny typ wyniku; frontend musi użyć 'success' in result (zmiana poza moim zakresem)"
+      }
+    ],
+    "question": "Jak ujednolicić wynik?"
+  }
+]
+```
+
+
+**Result:**
+
+```
+{"answers":{"Stan frontendu":{"selected":["Etapy 3-6 zostają u frontendu; ja robię tylko backend"],"freeText":null,"skipped":false},"Zakres backendu":{"selected":["Tak, tylko ujednolicenie wyniku createOrder/placeOrder"],"freeText":null,"skipped":false},"Kształt wyniku":{"selected":["A: `success: false` w każdej gałęzi błędu (zgodne z obecnym frontendem), poprawić `createOrder` i test"],"freeText":null,"skipped":false}}}
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="write" data-tool-name="create_file"><details>
+<summary>Tool use: **create_file**</summary>
+
+Created `plan-darmowy-kurier-backend.md`
+
+**Input:**
+
+- content:
+
+```
+# Plan: darmowy kurier DHL od 300 zł (backend, dokończenie)
+
+Wejście: [docs/plan-darmowy-kurier.md](plan-darmowy-kurier.md) (kroki 1-2 backendu zrobione), [docs/plan-darmowy-kurier-frontend.md](plan-darmowy-kurier-frontend.md), kontrakt [docs/contracts/darmowy-kurier.md](contracts/darmowy-kurier.md), sekcja „Oczekiwania frontendu”.
+
+## Rodzaj i cel
+Zmiana funkcjonalności (kontrakt wyniku) — każdy wynik `createOrder`/`placeOrder` ma pole `success`, żeby `app/(shop)/checkout/payment/page.tsx` przechodziło `npm run typecheck` (błąd jest też na HEAD).
+
+## Decyzje (zatwierdzone)
+- To jedyna brakująca część backendu (potwierdzone przez użytkownika).
+- Wariant A: `success: false` w każdej gałęzi błędu; dodatkowe pola zostają (`fieldErrors`, `unavailableProducts`, `code`).
+- `createOrder` i istniejący test integracyjny przechodzą z `'success' in result` na `result.success`.
+- Etapy 3-6 frontendu zostają u Frontend Developera (w tym `app/(shop)/checkout/payment/page.tsx`, niezacommitowany).
+
+## Zakres
+- Backend: `lib/orders.ts` (jawny typ wyniku `PlaceOrderResult`, `success: false` w gałęziach błędu), `lib/actions/checkout.ts` (`createOrder`: gałąź niezalogowanego, `revalidatePath` tylko przy `success`).
+- Baza danych: nie.
+- Usługi zewnętrzne: bez zmian (email, mock płatności).
+- Frontend: poza zakresem; zmiana nie wymaga edycji `payment/page.tsx` (czyta `result.success`, `result.orderId`, `result.error`).
+
+## Etapy
+1. **Ujednolicony wynik zamówienia** — typ `PlaceOrderResult` w `lib/orders.ts` i użycie w `placeOrder`/`createOrder`; dostosowanie istniejących testów integracyjnych do nowego dyskryminatora; aktualizacja kontraktu (*zależy od: brak*).
+   - Weryfikacja: `npm run typecheck` → 0 błędów (w tym `payment/page.tsx`); `npm run lint` → czysto; `npm run test:unit` → bez zmian; `npm run test:integration:direct` → wszystkie przechodzą.
+
+## Plan testów
+- Unit: bez nowych (zmiana kształtu wyniku, brak logiki czystej).
+- Integracja (`tests/integration/checkout.test.ts`):
+  - istniejący test gratisu: `assert.ok('success' in result)` → `result.success === true`;
+  - istniejący test pustego koszyka: `result.success === false` i `result.error`;
+  - nowy: błędny adres zwraca `success: false` i `fieldErrors`, bez zamówienia i maila (dane nie są tworzone, więc bez cleanupu poza `clearEmails()`).
+  - Dane z seeda i konta `test@shopeasy.pl`; sprzątanie jak w istniejącym pliku.
+- E2E: poza zakresem (etap backendowy; scenariusz w planie frontendu, etap 6).
+- Błędy płatności (`always_fail`/`always_timeout`): poza zakresem (wymagają `workshop:mode` wołającego `scripts/`).
+
+## Dokumentacja
+- `docs/contracts/darmowy-kurier.md` — sekcja „Oczekiwania frontendu” zamieniona na opis zrealizowanego kształtu wyniku (etap 1).
+- `docs/product-contract.md` — bez zmian w tym planie (należy do etapu 5 frontendu).
+
+## Poza zakresem
+Schemat bazy, katalog, logowanie, mock płatności, `app/`, `components/`, `hooks/`, `store/`, `tests/e2e/`, `docs/product-contract.md`, migracja starych zamówień.
+
+## Ryzyka i pytania otwarte
+- `'success' in result` zmienia znaczenie po zmianie → zaktualizować test i `createOrder` w tym samym etapie (zaplanowane).
+- `typecheck` zależy od niezacommitowanego `payment/page.tsx` frontendu → weryfikuję na working tree; commit etapu obejmuje tylko pliki backendu, testy, plan i kontrakt.
+- Wcześniejsze przebiegi `typecheck` w etapach frontendu 1-2 przechodziły mimo błędu → przyczyny nie ustalono; po zmianie sprawdzę, czy `typecheck` jest wiarygodny (przebieg z czystym cache `tsc`, jeśli nadal się rozjeżdża).
+
+```
+
+- filePath: `c:\Projects\infoshare-accenture-ai-dev-1\docs\plan-darmowy-kurier-backend.md`
+
+**Result:**
+
+```
+The following files were successfully edited:
+c:\Projects\infoshare-accenture-ai-dev-1\docs\plan-darmowy-kurier-backend.md
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **plan-darmowy-kurier-backend.md**</summary>
+
+@@ lines 1-1 @@
+
+```
+# Plan: darmowy kurier DHL od 300 zł (backend, dokończenie)
+
+Wejście: [docs/plan-darmowy-kurier.md](plan-darmowy-kurier.md) (kroki 1-2 backendu zrobione), [docs/plan-darmowy-kurier-frontend.md](plan-darmowy-kurier-frontend.md), kontrakt [docs/contracts/darmowy-kurier.md](contracts/darmowy-kurier.md), sekcja „Oczekiwania frontendu”.
+
+## Rodzaj i cel
+Zmiana funkcjonalności (kontrakt wyniku) — każdy wynik `createOrder`/`placeOrder` ma pole `success`, żeby `app/(shop)/checkout/payment/page.tsx` przechodziło `npm run typecheck` (błąd jest też na HEAD).
+
+## Decyzje (zatwierdzone)
+- To jedyna brakująca część backendu (potwierdzone przez użytkownika).
+- Wariant A: `success: false` w każdej gałęzi błędu; dodatkowe pola zostają (`fieldErrors`, `unavailableProducts`, `code`).
+- `createOrder` i istniejący test integracyjny przechodzą z `'success' in result` na `result.success`.
+- Etapy 3-6 frontendu zostają u Frontend Developera (w tym `app/(shop)/checkout/payment/page.tsx`, niezacommitowany).
+
+## Zakres
+- Backend: `lib/orders.ts` (jawny typ wyniku `PlaceOrderResult`, `success: false` w gałęziach błędu), `lib/actions/checkout.ts` (`createOrder`: gałąź niezalogowanego, `revalidatePath` tylko przy `success`).
+- Baza danych: nie.
+- Usługi zewnętrzne: bez zmian (email, mock płatności).
+- Frontend: poza zakresem; zmiana nie wymaga edycji `payment/page.tsx` (czyta `result.success`, `result.orderId`, `result.error`).
+
+## Etapy
+1. **Ujednolicony wynik zamówienia** — typ `PlaceOrderResult` w `lib/orders.ts` i użycie w `placeOrder`/`createOrder`; dostosowanie istniejących testów integracyjnych do nowego dyskryminatora; aktualizacja kontraktu (*zależy od: brak*).
+   - Weryfikacja: `npm run typecheck` → 0 błędów (w tym `payment/page.tsx`); `npm run lint` → czysto; `npm run test:unit` → bez zmian; `npm run test:integration:direct` → wszystkie przechodzą.
+
+## Plan testów
+- Unit: bez nowych (zmiana kształtu wyniku, brak logiki czystej).
+- Integracja (`tests/integration/checkout.test.ts`):
+  - istniejący test gratisu: `assert.ok('success' in result)` → `result.success === true`;
+  - istniejący test pustego koszyka: `result.success === false` i `result.error`;
+  - nowy: błędny adres zwraca `success: false` i `fieldErrors`, bez zamówienia i maila (dane nie są tworzone, więc bez cleanupu poza `clearEmails()`).
+  - Dane z seeda i konta `test@shopeasy.pl`; sprzątanie jak w istniejącym pliku.
+- E2E: poza zakresem (etap backendowy; scenariusz w planie frontendu, etap 6).
+- Błędy płatności (`always_fail`/`always_timeout`): poza zakresem (wymagają `workshop:mode` wołającego `scripts/`).
+
+## Dokumentacja
+- `docs/contracts/darmowy-kurier.md` — sekcja „Oczekiwania frontendu” zamieniona na opis zrealizowanego kształtu wyniku (etap 1).
+- `docs/product-contract.md` — bez zmian w tym planie (należy do etapu 5 frontendu).
+
+## Poza zakresem
+Schemat bazy, katalog, logowanie, mock płatności, `app/`, `components/`, `hooks/`, `store/`, `tests/e2e/`, `docs/product-contract.md`, migracja starych zamówień.
+
+## Ryzyka i pytania otwarte
+- `'success' in result` zmienia znaczenie po zmianie → zaktualizować test i `createOrder` w tym samym etapie (zaplanowane).
+- `typecheck` zależy od niezacommitowanego `payment/page.tsx` frontendu → weryfikuję na working tree; commit etapu obejmuje tylko pliki backendu, testy, plan i kontrakt.
+- Wcześniejsze przebiegi `typecheck` w etapach frontendu 1-2 przechodziły mimo błędu → przyczyny nie ustalono; po zmianie sprawdzę, czy `typecheck` jest wiarygodny (przebieg z czystym cache `tsc`, jeśli nadal się rozjeżdża).
+
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="vscode_askQuestions"><details>
+<summary>Tool use: **vscode_askQuestions**</summary>
+
+Analyzing your answers...
+
+**Input:**
+
+- questions:
+
+```
+[
+  {
+    "header": "Plan backendu",
+    "options": [
+      {
+        "label": "Zatwierdzam plan, zaczynaj etap 1",
+        "recommended": true
+      },
+      {
+        "label": "Mam poprawki do planu"
+      }
+    ],
+    "question": "Czy zatwierdzasz plan i mam zacząć etap 1 (ujednolicony wynik zamówienia)?"
+  }
+]
+```
+
+
+**Result:**
+
+```
+{"answers":{"Plan backendu":{"selected":["Zatwierdzam plan, zaczynaj etap 1"],"freeText":null,"skipped":false}}}
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="search" data-tool-name="grep_search"><details>
+<summary>Tool use: **grep_search**</summary>
+
+Searched for regex `orderNumber` (`**/prisma/schema.prisma`), 1 result
+
+**Input:**
+
+- includePattern: `prisma/schema.prisma`
+- isRegexp: `true`
+- query: `orderNumber`
+
+**Result:**
+
+```
+Found 1 match in 1 file for "orderNumber"
+
+prisma/schema.prisma
+121:  orderNumber    String               @unique @default(cuid())
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read skill `backend-implementation`: `implementation-rules.md`
+
+**Input:**
+
+- endLine: `200`
+- filePath: `c:\Projects\infoshare-accenture-ai-dev-1\.github\skills\backend-implementation\references\implementation-rules.md`
+- startLine: `1`
+
+**Result:**
+
+```
+# Reguły implementacji etapu
+
+## Przed edycją
+
+- [ ] Przeczytaj pliki, które zmieniasz, oraz ich użycia (symbole, importy). Nie edytuj na podstawie założeń.
+- [ ] Stan plików mógł się zmienić (edycje użytkownika, cofnięcia). Sprawdź aktualną treść przed zmianą.
+- [ ] Etap ma jeden cel. Jeśli zmiana rośnie, podziel ją i zapytaj.
+
+## Zakres zmiany
+
+- Rób tylko to, co wynika z etapu. Bez dodatkowych funkcji, porządków i „ulepszeń”.
+- Refaktor: zachowanie bez zmian. Zmiana zachowania w trakcie refaktoru = osobny etap.
+- Nie dotykaj frontendu, E2E i dokumentacji spoza etapu.
+- Nie czytaj i nie zmieniaj ścieżek poza zakresem z AGENTS.md.
+
+## Jakość kodu
+
+- Jedno źródło prawdy dla reguł biznesowych (stałe, wspólne funkcje). Nie duplikuj liczb i progów.
+- Logikę biznesową wydzielaj do czystych funkcji bez zależności od frameworka, żeby dało się ją testować jednostkowo i używać po stronie klienta.
+- Nazywaj typy zwracane i parametry złożone (bez anonimowych obiektów w sygnaturach publicznych).
+- Komentarz tylko tam, gdzie kod nie mówi sam za siebie, jedna krótka linia.
+- Obsługa błędów tylko na granicach systemu (wejście użytkownika, baza, usługi zewnętrzne).
+
+## Bezpieczeństwo (Next.js / server actions)
+
+- Plik z `'use server'` eksportuje wyłącznie publiczne akcje. Funkcji przyjmującej tożsamość (np. `userId`, obiekt użytkownika) nie eksportuj stamtąd. Umieść ją w module bez `'use server'`, a akcja wyciąga tożsamość z sesji i ją wywołuje.
+- Nie ufaj wartościom z klienta. Kwoty, koszty i uprawnienia licz po stronie serwera.
+- Waliduj dane wejściowe na granicy (schematy zod), zanim dotkniesz bazy lub płatności.
+- Kolejność: walidacja → obliczenia → efekty uboczne (płatność, zapis, email).
+
+## Po edycji
+
+- [ ] `typecheck` i `lint` bez błędów (komendy z AGENTS.md).
+- [ ] Zmiana nie zmienia zachowania poza tym, co zaplanowano.
+- [ ] Pokaż użytkownikowi listę zmienionych plików i krótki opis. Nie commituj przed bramką.
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="multi_replace_string_in_file"><details>
+<summary>Tool use: **multi_replace_string_in_file**</summary>
+
+Multi-Replace String in Files
+
+**Input:**
+
+- explanation: `Ujednolicenie wyniku placeOrder/createOrder: success w każdej gałęzi`
+- replacements: `[{"filePath": "c:\\Projects\\infoshare-accenture-ai-dev-1\\lib\\orders.ts", "newString">: "}\n\nexport type PlaceOrderResult =\n  | { success: true; orderId: string; orderNumber: string }\n  | {\n      success: false\n      error: string\n      code?: string\n      fieldErrors?: Record<string, string[] | undefined>\n      unavailableProducts?: string[]\n    }\n\nexport async function placeOrder(user: SessionUser, params: CreateOrderParams): Promise<PlaceOrderResult> {\n  // Waliduj adres\n  const addrParsed = AddressSchema.safeParse(params.address)\n  if (!addrParsed.success) {\n    return { success: false, error: 'Nieprawid\u0142owe dane adresu.', fieldErrors: addrParsed.error.flatten().fieldErrors }\n  }", "oldString": "}\n\nexport async function placeOrder(user: SessionUser, params: CreateOrderParams) {\n  // Waliduj adres\n  const addrParsed = AddressSchema.safeParse(params.address)\n  if (!addrParsed.success) {\n    return { error: 'Nieprawid\u0142owe dane adresu.', fieldErrors: addrParsed.error.flatten().fieldErrors }\n  }"}]`
+
+**Result:**
+
+```
+ERROR: Your input to the tool was invalid (must be array)
+Please check your input and try again.
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **orders.ts**</summary>
+
+@@ lines 114-114 @@ (deleted)
+
+@@ lines 61-61 @@
+
+```
+success: false, 
+```
+
+@@ lines 51-51 @@
+
+```
+success: false, 
+```
+
+@@ lines 45-45 @@
+
+```
+success: false,
+      
+```
+
+@@ lines 39-39 @@
+
+```
+success: false, 
+```
+
+@@ lines 26-30 @@
+
+```
+type PlaceOrderResult =
+  | { success: true; orderId: string; orderNumber: string }
+  | {
+      success: false
+      error: string
+      code?: string
+      fieldErrors?: Record<string, string[] | undefined>
+      unavailableProducts?: string[]
+    }
+
+export async function placeOrder(user: SessionUser, params: CreateOrderParams): Promise<PlaceOrderResult> {
+  // Waliduj adres
+  const addrParsed = AddressSchema.safeParse(params.address)
+  if (!addrParsed.success) {
+    return { success: false,
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+
+```
+
+```
+
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **checkout.ts**</summary>
+
+@@ lines 5-12 @@
+
+```
+, type PlaceOrderResult } from '@/lib/orders'
+
+export async function createOrder(params: CreateOrderParams): Promise<PlaceOrderResult> {
+  const user = await getSessionUser()
+  if (!user) return { success: false, error: 'Zaloguj się, aby złożyć zamówienie.' }
+
+  const result = await placeOrder(user, params)
+  if (result.success
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="str_replace_based_edit_file_placeholder"><details>
+<summary>Tool use: **str_replace_based_edit_file_placeholder**</summary>
+
+Added 1 todo
+
+**Result:**
+
+```
+ERROR: The tool "str_replace_based_edit_file_placeholder" does not exist
+Please check your input and try again.
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="vscode_askQuestions"><details>
+<summary>Tool use: **vscode_askQuestions**</summary>
+
+Analyzing your answers...
+
+**Input:**
+
+- questions:
+
+```
+[
+  {
+    "header": "Etap 1 backend",
+    "options": [
+      {
+        "label": "OK, uruchom typecheck i lint",
+        "recommended": true
+      },
+      {
+        "label": "Mam korekty"
+      }
+    ],
+    "question": "Czy zmiana w lib/orders.ts i lib/actions/checkout.ts jest zaakceptowana?"
+  }
+]
+```
+
+
+**Result:**
+
+```
+{"answers":{"Etap 1 backend":{"selected":["OK, uruchom typecheck i lint"],"freeText":null,"skipped":false}}}
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` npm run typecheck; npm run lint`
+
+Weryfikacja etapu 1 backendu: typecheck i lint
+
+```bash
+npm run typecheck; npm run lint
+```
+
+**Result:**
+
+```
+
+> shopeasy-devs@0.1.0 typecheck
+> tsc --noEmit
+
+tests/integration/checkout.test.ts:51:20 - error TS2339: Property 'orderId' does not exist on type 'PlaceOrderResult'.
+  Property 'orderId' does not exist on type '{ success: false; error: string; code?: string | undefined; fieldErrors?: Record<string, string[] | undefined> | undefined; unavailableProducts?: string[] | undefined; }'.
+
+51   orderId = result.orderId
+                      ~~~~~~~
+
+tests/integration/checkout.test.ts:53:72 - error TS2339: Property 'orderId' does not exist on type 'PlaceOrderResult'.
+  Property 'orderId' does not exist on type '{ success: false; error: string; code?: string | undefined; fieldErrors?: Record<string, string[] | undefined> | undefined; unavailableProducts?: string[] | undefined; }'.
+
+53   const order = await db.order.findUniqueOrThrow({ where: { id: result.orderId } })
+                                                                          ~~~~~~~
+
+
+Found 2 errors in the same file, starting at: tests/integration/checkout.test.ts:51
+
+
+> shopeasy-devs@0.1.0 lint
+> eslint
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="vscode_askQuestions"><details>
+<summary>Tool use: **vscode_askQuestions**</summary>
+
+Analyzing your answers...
+
+**Input:**
+
+- questions:
+
+```
+[
+  {
+    "header": "Plan testów etapu 1",
+    "options": [
+      {
+        "label": "Zatwierdzam, napisz testy i uruchom",
+        "recommended": true
+      },
+      {
+        "label": "Mam uwagi"
+      }
+    ],
+    "question": "Czy zatwierdzasz wyniki weryfikacji i plan testów?"
+  }
+]
+```
+
+
+**Result:**
+
+```
+{"answers":{"Plan testów etapu 1":{"selected":["Zatwierdzam, napisz testy i uruchom"],"freeText":null,"skipped":false}}}
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **checkout.test.ts**</summary>
+
+@@ lines 77-81 @@
+
+```
+equal(result.success, false)
+  assert.equal(result.error, 'Koszyk jest pusty.')
+  assert.equal(await db.order.count({ where: { userId: user.id } }), ordersBefore)
+  assert.equal(await db.address.count({ where: { userId: user.id } }), addressesBefore)
+  assert.equal(await db.cartItem.count({ where: { userId: user.id } }), 0)
+  assert.equal(getEmailsTo(USER_EMAIL).length, 0)
+})
+
+test('błędny adres zwraca success false z fieldErrors, nie tworzy zamówienia, adresu ani maila', async () => {
+  const user = await db.user.findUniqueOrThrow({ where: { email: USER_EMAIL } })
+  clearEmails()
+  const ordersBefore = await db.order.count({ where: { userId: user.id } })
+  const addressesBefore = await db.address.count({ where: { userId: user.id } })
+
+  const result = await placeOrder(
+    { id: user.id, email: user.email, name: user.name },
+    { address: { ...ADDRESS, postalCode: '' }, paymentMethod: 'CARD', deliveryMethod: 'COURIER' },
+  )
+
+  assert.equal(result.success, false)
+  assert.ok(!result.success && result.fieldErrors?.postalCode?.length, 'błąd powinien dotyczyć kodu pocztowego')
+  assert.equal(await db.order.count({ where: { userId: user.id } }), ordersBefore)
+  assert.equal(await db.address.count({ where: { userId: user.id } }), addressesBefore
+```
+
+@@ lines 50-50 @@
+
+```
+result.success
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` npm run typecheck; npm run lint; npm run test:unit 2>&1 | tail -12; npm run ...`
+
+Uruchomienie typecheck, lint, testów unit i integracyjnych po zmianach
+
+```bash
+npm run typecheck; npm run lint; npm run test:unit 2>&1 | tail -12; npm run test:integration:direct 2>&1 | tail -25
+```
+
+**Result:**
+
+```
+
+> shopeasy-devs@0.1.0 typecheck
+> tsc --noEmit
+
+
+> shopeasy-devs@0.1.0 lint
+> eslint
+
+✔ zmiana tożsamości bez nowego podpisu jest odrzucona (0.5577ms)
+✔ sesja wygasa dokładnie na granicy TTL (0.4213ms)
+✔ stare cookie JSON, pusty i uszkodzony token są odrzucone (0.2565ms)
+✔ reset sekretu unieważnia poprzednią sesję (0.3863ms)
+ℹ tests 26
+ℹ suites 0
+ℹ pass 26
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 500.7029
+
+> shopeasy-devs@0.1.0 test:integration:direct
+> tsx --import ./tests/integration/setup.ts --test tests/integration/*.test.ts
+
+✔ katalog filtruje dostępność na prawdziwej bazie fixtures (215.6869ms)
+✔ kategoria, sortowanie i paginacja dają spójny wynik (9.8687ms)
+✔ szczegóły produktu zawierają warianty i obsługują brak produktu (13.3953ms)
+✔ zamówienie kurierem >= 300 zł zapisuje deliveryCost 0 i wysyła mail z Gratis (233.9062ms)
+✔ checkout z pustym koszykiem zwraca błąd, nie tworzy zamówienia ani maila (10.3671ms)
+✔ błędny adres zwraca success false z fieldErrors, nie tworzy zamówienia, adresu ani maila (4.9959ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1204.0214
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **darmowy-kurier.md**</summary>
+
+@@ lines 33-35 @@
+
+```
+Kształt wyniku zamówienia
+
+`createOrder` (`lib/actions/checkout.ts`) i `placeOrder` (`lib/orders.ts`) zwracają `PlaceOrderResult` (`lib/orders.ts`):
+
+- sukces: `{ success: true, orderId, orderNumber }`,
+- błąd: `{ success: false, error, code?, fieldErrors?, unavailableProducts? }`.
+
+Dyskryminator to `result.success`. Sprawdzanie przez `'success' in result` nie rozróżnia już sukcesu od błę
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **plan-darmowy-kurier-backend.md**</summary>
+
+@@ lines 24-24 @@
+
+```
+ostęp (stan na 2026-10-07)
+
+- [x] **1. Ujednolicony wynik zamówienia** — `PlaceOrderResult` w `lib/orders.ts` (`success: true | false` w każdej gałęzi), `createOrder` z jawnym typem i `revalidatePath` tylko przy `success`; testy integracyjne: dwa istniejące przepisane na `result.success`, jeden nowy (błędny adres); kontrakt zaktualizowany. Commit WIP (hash w następnym etapie/Fazie C).
+  - [x] Integracja: 6/6 w `npm run test:integration:direct` (w tym 1 nowy).
+
+**Weryfikacja:** `typecheck` (0 błędów, w tym `payment/page.tsx` na working tree), `lint`, `test:unit` (26/26), `test:integration:direct` (6/6) przechodzą. Nie uruchamiano: `test:e2e`, `build`, weryfikacji ręcznej na działającej aplikacji.
+
+**Uwaga:** `app/(shop)/checkout/payment/page.tsx` (etap 3 frontendu) jest nadal niezacommitowany i nie wchodzi do commitu tego etapu.
+
+## P
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` git status --short && git add lib/orders.ts lib/actions/checkout.ts tests/in...`
+
+Commit WIP etapu 1 backendu z jawnie wskazanymi plikami
+
+```bash
+git status --short && git add lib/orders.ts lib/actions/checkout.ts tests/integration/checkout.test.ts docs/plan-darmowy-kurier-backend.md docs/contracts/darmowy-kurier.md && git commit -m "WIP: darmowy kurier DHL od 300 zł - backend (jednolity wynik createOrder, testy)" && git status --short
+```
+
+**Result:**
+
+```
+ M app/(shop)/checkout/payment/page.tsx
+ M docs/ai-sessions/2026-10-07_07-52-25Z-wdrozenie-polityki-dostawy.md
+ M docs/contracts/darmowy-kurier.md
+ M lib/actions/checkout.ts
+ M lib/orders.ts
+ M tests/integration/checkout.test.ts
+?? docs/plan-darmowy-kurier-backend.md
+[main 7ceca36] WIP: darmowy kurier DHL od 300 zł - backend (jednolity wynik createOrder, testy)
+ 5 files changed, 103 insertions(+), 12 deletions(-)
+ create mode 100644 docs/plan-darmowy-kurier-backend.md
+ M app/(shop)/checkout/payment/page.tsx
+ M docs/ai-sessions/2026-10-07_07-52-25Z-wdrozenie-polityki-dostawy.md
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+Etap 1 backendu jest gotowy i zacommitowany jako WIP `7ceca36`. Poza commitem zostały `page.tsx` (etap 3 frontendu) i plik z `ai-sessions`.
+
+**Weryfikacja** (faktyczne uruchomienia):
+- `typecheck`: 0 błędów, w tym `payment/page.tsx` na working tree.
+- `lint`: czysto.
+- `test:unit`: 26/26.
+- `test:integration:direct`: 6/6, w tym 1 nowy test (błędny adres).
+- Nie uruchamiano: `test:e2e`, `build`. Nie sprawdzano ręcznie na działającej aplikacji.
+
+**Gotowe dla frontendu:**
+- Kontrakt: `docs/contracts/darmowy-kurier.md`, sekcja „Kształt wyniku zamówienia”.
+- Typ:  z `orders.ts`.
+  - Sukces: `{ success: true, orderId, orderNumber }`.
+  - Błąd: `{ success: false, error, code?, fieldErrors?, unavailableProducts? }`.
+- Akcja:  z `checkout.ts` zwraca . Dyskryminatorem jest , a `'success' in result` już nie rozróżnia sukcesu od błędu.
+- Plan: `docs/plan-darmowy-kurier-backend.md`.
+
+**Do uwagi:**
+- Nie ustaliłem, czemu `typecheck` w etapach frontendu 1-2 przechodził mimo tego błędu. Obecny wynik jest czysty.
+- Plan frontendu (`docs/plan-darmowy-kurier-frontend.md`) wymaga dalej:
+  - Etap 3: commit płatności i aktualizacja Postępu.
+  - Etapy 4-6: sukces i historia zamówień, `product-contract.md`, test E2E.
+
+## Handoff
+- Zadanie: dokończyć frontend (etap 3: `typecheck`, `lint` i commit `payment/page.tsx`; potem etapy 4-6).
+- Wejście: `docs/plan-darmowy-kurier-frontend.md` i `docs/contracts/darmowy-kurier.md`.
+- Rekomendowany agent: Frontend Developer (skill `frontend-implementation`).
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="task" data-tool-name="manage_todo_list"><details>
+<summary>Tool use: **manage_todo_list**</summary>
+
+Starting: *Update createOrder and placeOrder return types* (3/4)
+</details></tool-use>
+
+---
+
+_**User (2026-10-07 08:24:26Z)**_
+
+commit backend WIP nim przejdziesz do frotnendu
+
+---
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` git log --oneline -3 && git show --stat --oneline HEAD | head -12 && git sta...`
+
+Potwierdzenie, że commit WIP backendu już istnieje
+
+```bash
+git log --oneline -3 && git show --stat --oneline HEAD | head -12 && git status --short
+```
+
+**Result:**
+
+```
+7ceca36 (HEAD -> main) WIP: darmowy kurier DHL od 300 zł - backend (jednolity wynik createOrder, testy)
+2a6cafc WIP: darmowy kurier DHL od 300 zł - frontend (strona dostawy)
+1e507a0 WIP: darmowy kurier DHL od 300 zł - frontend (CartSummary, pasek postępu)
+7ceca36 WIP: darmowy kurier DHL od 300 zł - backend (jednolity wynik createOrder, testy)
+ docs/contracts/darmowy-kurier.md    |  9 +++++++
+ docs/plan-darmowy-kurier-backend.md | 53 +++++++++++++++++++++++++++++++++++++
+ lib/actions/checkout.ts             |  8 +++---
+ lib/orders.ts                       | 23 +++++++++++-----
+ tests/integration/checkout.test.ts  | 22 +++++++++++++--
+ 5 files changed, 103 insertions(+), 12 deletions(-)
+ M app/(shop)/checkout/payment/page.tsx
+ M docs/ai-sessions/2026-10-07_07-52-25Z-wdrozenie-polityki-dostawy.md
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+Commit backendu już istnieje: `7ceca36` („WIP: darmowy kurier DHL od 300 zł - backend (jednolity wynik createOrder, testy)”). Nie dodawałem nic nowego.
+
+Commit obejmuje:
+- `orders.ts` i `checkout.ts`,
+- `checkout.test.ts`,
+- `darmowy-kurier.md` i `plan-darmowy-kurier-backend.md`.
+
+Niezacommitowane zostały `page.tsx` (etap 3 frontendu) i plik z `ai-sessions`.
+
+Hash `7ceca36` wpiszę w sekcji Postęp planu backendu przy następnym commicie, zgodnie z szablonem. Zostało tam „hash w następnym etapie/Fazie C”.
+
+Przejście do frontendu wymaga przełączenia na agenta Frontend Developer (handoff z poprzedniej wiadomości). Nie mogę tego zrobić z tego trybu, bo `app`, `components` i `e2e` są poza moim zakresem.
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="task" data-tool-name="manage_todo_list"><details>
+<summary>Tool use: **manage_todo_list**</summary>
+
+Created 2 todos
+</details></tool-use>
+
+---
+
+_**User (2026-10-07 08:25:08Z)**_
+
+Backend jest gotowy wg planu. Dokończ część frontendową. Przeczytaj plan backendu (sekcja Postęp) i kontrakt w docs/contracts/, potem zacznij od Fazy A skilla frontend-implementation.
+
+---
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` git status --short && git log --oneline -4 && git diff HEAD --stat -- "app/\(...`
+
+Sprawdzenie stanu repo przed Fazą A
+
+```bash
+git status --short && git log --oneline -4 && git diff HEAD --stat -- "app/(shop)/checkout/payment/page.tsx"
+```
+
+**Result:**
+
+```
+ M app/(shop)/checkout/payment/page.tsx
+ M docs/ai-sessions/2026-10-07_07-52-25Z-wdrozenie-polityki-dostawy.md
+7ceca36 (HEAD -> main) WIP: darmowy kurier DHL od 300 zł - backend (jednolity wynik createOrder, testy)
+2a6cafc WIP: darmowy kurier DHL od 300 zł - frontend (strona dostawy)
+1e507a0 WIP: darmowy kurier DHL od 300 zł - frontend (CartSummary, pasek postępu)
+b962697 (origin/main, origin/HEAD) Analityk: zgłoszenie + plan -> handoff : developer
+ app/(shop)/checkout/payment/page.tsx | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `plan-darmowy-kurier-backend.md`
+
+**Input:**
+
+- endLine: `60`
+- filePath: `c:\Projects\infoshare-accenture-ai-dev-1\docs\plan-darmowy-kurier-backend.md`
+- startLine: `1`
+
+**Result:**
+
+```
+# Plan: darmowy kurier DHL od 300 zł (backend, dokończenie)
+
+Wejście: [docs/plan-darmowy-kurier.md](plan-darmowy-kurier.md) (kroki 1-2 backendu zrobione), [docs/plan-darmowy-kurier-frontend.md](plan-darmowy-kurier-frontend.md), kontrakt [docs/contracts/darmowy-kurier.md](contracts/darmowy-kurier.md), sekcja „Oczekiwania frontendu”.
+
+## Rodzaj i cel
+Zmiana funkcjonalności (kontrakt wyniku) — każdy wynik `createOrder`/`placeOrder` ma pole `success`, żeby `app/(shop)/checkout/payment/page.tsx` przechodziło `npm run typecheck` (błąd jest też na HEAD).
+
+## Decyzje (zatwierdzone)
+- To jedyna brakująca część backendu (potwierdzone przez użytkownika).
+- Wariant A: `success: false` w każdej gałęzi błędu; dodatkowe pola zostają (`fieldErrors`, `unavailableProducts`, `code`).
+- `createOrder` i istniejący test integracyjny przechodzą z `'success' in result` na `result.success`.
+- Etapy 3-6 frontendu zostają u Frontend Developera (w tym `app/(shop)/checkout/payment/page.tsx`, niezacommitowany).
+
+## Zakres
+- Backend: `lib/orders.ts` (jawny typ wyniku `PlaceOrderResult`, `success: false` w gałęziach błędu), `lib/actions/checkout.ts` (`createOrder`: gałąź niezalogowanego, `revalidatePath` tylko przy `success`).
+- Baza danych: nie.
+- Usługi zewnętrzne: bez zmian (email, mock płatności).
+- Frontend: poza zakresem; zmiana nie wymaga edycji `payment/page.tsx` (czyta `result.success`, `result.orderId`, `result.error`).
+
+## Etapy
+1. **Ujednolicony wynik zamówienia** — typ `PlaceOrderResult` w `lib/orders.ts` i użycie w `placeOrder`/`createOrder`; dostosowanie istniejących testów integracyjnych do nowego dyskryminatora; aktualizacja kontraktu (*zależy od: brak*).
+   - Weryfikacja: `npm run typecheck` → 0 błędów (w tym `payment/page.tsx`); `npm run lint` → czysto; `npm run test:unit` → bez zmian; `npm run test:integration:direct` → wszystkie przechodzą.
+
+## Postęp (stan na 2026-10-07)
+
+- [x] **1. Ujednolicony wynik zamówienia** — `PlaceOrderResult` w `lib/orders.ts
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `darmowy-kurier.md`
+
+**Input:**
+
+- endLine: `60`
+- filePath: `c:\Projects\infoshare-accenture-ai-dev-1\docs\contracts\darmowy-kurier.md`
+- startLine: `1`
+
+**Result:**
+
+```
+# Kontrakt: darmowy kurier DHL od 300 zł
+
+Wspólne reguły dla backendu i frontendu. Zatwierdzone przez PO (Kamil). Źródło decyzji: [docs/plan-darmowy-kurier.md](../plan-darmowy-kurier.md).
+
+## Reguły
+
+- Próg: suma produktów (bez dostawy) >= 30000 gr włącznie.
+- Gratis dotyczy tylko `COURIER`. `PARCEL_LOCKER` zawsze 999 gr.
+- Poniżej progu kurier kosztuje 1499 gr.
+- Kwotę zawsze liczy `calculateDeliveryCost` / `calculateOrderTotals` z `lib/constants/checkout.ts`. Zakaz lokalnych kopii cen i `DELIVERY_OPTIONS`.
+- W `sessionStorage` zapisujemy wyłącznie id metody. Koszt jest liczony na nowo z aktualnego koszyka na każdym kroku.
+- Serwer przy zapisie zamówienia liczy kwotę sam; kwota z klienta nie jest źródłem prawdy.
+
+## Prezentacja
+
+| Miejsce | Zachowanie |
+|---------|------------|
+| Koszyk, wiersz „Dostawa” (metoda jeszcze niewybrana) | „Od 9,99 zł; gratis kurierem od 300 zł” |
+| Koszyk, poniżej progu | „Brakuje X zł do darmowej dostawy” (pasek/komunikat) |
+| Koszyk, próg osiągnięty | „Masz darmową dostawę kurierem DHL” |
+| Dostawa, kurier >= progu | „Gratis” + przekreślone 14,99 zł; suma bez dostawy |
+| Dostawa, kurier < progu | 14,99 zł |
+| Płatność, sukces, szczegóły zamówienia | `formatDeliveryCost`: 0 gr = „Gratis” |
+| E-mail potwierdzający | „Gratis” (już zaimplementowane w `lib/orders.ts`) |
+
+## Przypadki graniczne
+
+- 29999 gr: kurier 1499 gr, razem 31498 gr w zakupie bazowym (słuchawki SoundMax X3) pozostaje bez zmian.
+- 30000 i 30001 gr: kurier 0 gr.
+- Spadek poniżej progu po zmianie koszyka: kurier wraca do 1499 gr.
+- Zamówienia sprzed zmiany: bez migracji; wartości zapisane w bazie wyświetlane bez zmian.
+
+## Kształt wyniku zamówienia
+
+`createOrder` (`lib/actions/checkout.ts`) i `placeOrder` (`lib/orders.ts`) zwracają `PlaceOrderResult` (`lib/orders.ts`):
+
+- sukces: `{ success: true, orderId, orderNumber }`,
+- błąd: `{ success: false, error, code?, fieldErrors?, unavailableProducts? }`.
+
+Dyskryminator to `result.success
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `playwright.config.ts`
+
+**Input:**
+
+- endLine: `60`
+- filePath: `c:\Projects\infoshare-accenture-ai-dev-1\playwright.config.ts`
+- startLine: `1`
+
+**Result:**
+
+```
+import { defineConfig } from 'playwright/test'
+
+export default defineConfig({
+  testDir: './tests/e2e',
+  workers: 1,
+  retries: 0,
+  timeout: 90000,
+  expect: { timeout: 15000 },
+  reporter: [['list'], ['json', { outputFile: '.workshop/e2e-results.json' }]],
+  use: { baseURL: 'http://127.0.0.1:3100', browserName: 'chromium', channel: 'msedge', headless: true, screenshot: 'only-on-failure', trace: 'retain-on-failure' },
+  webServer: { command: 'npm run dev', url: 'http://127.0.0.1:3100', reuseExistingServer: false, timeout: 120000 },
+})
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="vscode_askQuestions"><details>
+<summary>Tool use: **vscode_askQuestions**</summary>
+
+Analyzing your answers...
+
+**Input:**
+
+- questions:
+
+```
+[
+  {
+    "header": "Uruchomienie E2E",
+    "message": "`playwright.config.ts` startuje serwer przez `npm run dev` (`scripts/dev.mjs`, poza moim zakresem) z `reuseExistingServer: false`, a testy działają na `workshop.db`. Baseline zakłada bazę w stanie startowym (np. `cartItem` = 0).",
+    "options": [
+      {
+        "label": "Uruchamiam `npm run test:e2e` (Playwright sam startuje serwer); Ty dbasz, żeby port 3100 był wolny i baza w stanie startowym",
+        "recommended": true
+      },
+      {
+        "label": "Nie uruchamiam E2E; piszesz i odpalasz sam"
+      }
+    ],
+    "question": "Czy mogę uruchamiać testy E2E w etapie 6?"
+  },
+  {
+    "header": "Zakres E2E",
+    "options": [
+      {
+        "label": "Pełny zakup: próg w koszyku, dostawa Gratis, płatność, deliveryCost = 0 w bazie; test sam sprząta zamówienie, adres i koszyk",
+        "recommended": true
+      },
+      {
+        "label": "Bez zakupu: koszyk, dostawa i płatność (bez zapisu zamówienia i bez sprawdzenia bazy)"
+      }
+    ],
+    "question": "Jak szeroki ma być scenariusz E2E?"
+  }
+]
+```
+
+
+**Result:**
+
+```
+{"answers":{"Uruchomienie E2E":{"selected":["Uruchamiam `npm run test:e2e` (Playwright sam startuje serwer); Ty dbasz, żeby port 3100 był wolny i baza w stanie startowym"],"freeText":null,"skipped":false},"Zakres E2E":{"selected":["Pełny zakup: próg w koszyku, dostawa Gratis, płatność, deliveryCost = 0 w bazie; test sam sprząta zamówienie, adres i koszyk"],"freeText":null,"skipped":false}}}
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **plan-darmowy-kurier-frontend.md**</summary>
+
+@@ lines 70-70 @@
+
+```
+na `workshop.db` → sprzątanie w teście; uruchomienie przez `npm run test:e2e` (zatwierdzone); baseline wymaga bazy w stanie startowym, więc po naszym teście nie może zostać żadne zamówienie ani pozycja koszyka
+```
+
+@@ lines 61-61 @@
+
+```
+nie jest już potrzebna; backend zapisał „Kształt wyniku zamówienia”. Dopisz oczekiwania tylko jeśli wyjdzie nowe pole lub stan
+```
+
+@@ lines 60-60 @@
+
+```
+: dopisać akapit o progu 300 zł; liczby bazowe W01 (kurier 1499, 314,98 zł dla słuchawek) zostają, bo dotyczą 29999 gr poniżej progu
+```
+
+@@ lines 56-56 @@
+
+```
+zatwierdzone: pełny zakup, nowy plik `tests/e2e/darmowa-dostawa.spec.ts`; `baseline.spec.ts` bez zmian): koszyk gościa: słuchawki → „Brakuje 0,01 zł…”; dodanie świecy → „Masz darmową dostawę…”; usunięcie świecy → „Brakuje 0,01 zł…”; ponowne dodanie świecy, logowanie, dostawa kurierem „Gratis” (razem 339,98 zł), płatność BLIK, `order.deliveryCost` = 0 i `order.total` = `order.subtotal` w bazie. Sprzątanie w `finally`/`afterAll`: zamówienie, pozycje, historia statusów, adres, pozycje koszyka użytkownika (po sprawdzeniu kaskad w `prisma/schema.prisma`). Lokatory po roli/etykiecie. Uruchomienie: `npm run test:e2e` (zatwierdzone; Playwright startuje serwer; port 3100 wolny, baza w stanie startowym po stronie użytkownika)
+```
+
+@@ lines 52-52 @@
+
+```
+sukcesu i historii zamówień nadal formatuje dostawę przez `formatPrice` (0 zł zamiast „Gratis”) do końca etapu 
+```
+
+@@ lines 44-45 @@
+
+```
+`2a6cafc` (WIP).
+- [~] **3. Płatność** — kod gotowy (`orderTotal` z `calculateOrderTotals`), niezacommitowany. Blokadę typów usunięła poprawka backendu `7ceca36`; zostało: `typecheck`, `lint`, commit
+```
+
+@@ lines 21-21 @@
+
+```
+, gotowy (commit `7ceca36`): `calculateDeliveryCost`, `calculateOrderTotals`, `formatDeliveryCost`, `placeOrder`, `createOrder` zwracający `PlaceOrderResult` (`success: true | false`; zob. kontrakt, sekcja „Kształt wyniku zamówienia”
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="vscode_askQuestions"><details>
+<summary>Tool use: **vscode_askQuestions**</summary>
+
+Analyzing your answers...
+
+**Input:**
+
+- questions:
+
+```
+[
+  {
+    "header": "Plan frontendu",
+    "options": [
+      {
+        "label": "Zatwierdzam, dokończ etap 3 i zaczynaj etap 4",
+        "recommended": true
+      },
+      {
+        "label": "Mam poprawki do planu"
+      }
+    ],
+    "question": "Czy zatwierdzasz zaktualizowany plan?"
+  }
+]
+```
+
+
+**Result:**
+
+```
+{"answers":{"Plan frontendu":{"selected":["Zatwierdzam, dokończ etap 3 i zaczynaj etap 4"],"freeText":null,"skipped":false}}}
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` npm run typecheck; npm run lint`
+
+Weryfikacja etapu 3 (płatność) po poprawce backendu
+
+```bash
+npm run typecheck; npm run lint
+```
+
+**Result:**
+
+```
+
+> shopeasy-devs@0.1.0 typecheck
+> tsc --noEmit
+
+
+> shopeasy-devs@0.1.0 lint
+> eslint
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="vscode_askQuestions"><details>
+<summary>Tool use: **vscode_askQuestions**</summary>
+
+Analyzing your answers...
+
+**Input:**
+
+- questions:
+
+```
+[
+  {
+    "header": "Etap 3: wyniki i testy",
+    "options": [
+      {
+        "label": "Zatwierdzam, zaktualizuj Postęp i zrób commit WIP",
+        "recommended": true
+      },
+      {
+        "label": "Mam uwagi"
+      }
+    ],
+    "question": "Czy zatwierdzasz wyniki weryfikacji i plan testów (bez testów w tym etapie)?"
+  }
+]
+```
+
+
+**Result:**
+
+```
+{"answers":{"Etap 3: wyniki i testy":{"selected":["Zatwierdzam, zaktualizuj Postęp i zrób commit WIP"],"freeText":null,"skipped":false}}}
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **plan-darmowy-kurier-frontend.md**</summary>
+
+@@ lines 45-45 @@
+
+```
+- [x] **3. Płatność** — `orderTotal` z `calculateOrderTotals(items, deliveryMethod)` zamiast ceny z `DELIVERY_OPTIONS`; w `sessionStorage` tylko id metody. Commit WIP (hash w następnym etapie).
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` git add "app/\(shop\)/checkout/payment/page.tsx" docs/plan-darmowy-kurier-fron...`
+
+Commit WIP etapu 3 z jawnie wskazanymi plikami
+
+```bash
+git add "app/(shop)/checkout/payment/page.tsx" docs/plan-darmowy-kurier-frontend.md && git commit -m "WIP: darmowy kurier DHL od 300 zł - frontend (płatność)" && git status --short
+```
+
+**Result:**
+
+```
+[main 4ed2e74] WIP: darmowy kurier DHL od 300 zł - frontend (płatność)
+ 2 files changed, 11 insertions(+), 11 deletions(-)
+ M docs/ai-sessions/2026-10-07_07-52-25Z-wdrozenie-polityki-dostawy.md
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="vscode_askQuestions"><details>
+<summary>Tool use: **vscode_askQuestions**</summary>
+
+Analyzing your answers...
+
+**Input:**
+
+- questions:
+
+```
+[
+  {
+    "header": "Etap 4",
+    "options": [
+      {
+        "label": "Tak, zaczynaj etap 4 (sukces i historia zamówień)",
+        "recommended": true
+      },
+      {
+        "label": "Zatrzymaj się tutaj"
+      }
+    ],
+    "question": "Czy zaczynać etap 4?"
+  }
+]
+```
+
+
+**Result:**
+
+```
+{"answers":{"Etap 4":{"selected":["Tak, zaczynaj etap 4 (sukces i historia zamówień)"],"freeText":null,"skipped":false}}}
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="search" data-tool-name="grep_search"><details>
+<summary>Tool use: **grep_search**</summary>
+
+Searched for regex `formatPrice` (`**/lib/products.ts`), 1 result
+
+**Input:**
+
+- includePattern: `lib/products.ts`
+- isRegexp: `true`
+- query: `formatPrice`
+
+**Result:**
+
+```
+Found 1 match in 1 file for "formatPrice"
+
+lib/products.ts
+101:export { formatPrice } from './format'
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `page.tsx`, lines 1 to 30
+
+**Input:**
+
+- endLine: `30`
+- filePath: `c:\Projects\infoshare-accenture-ai-dev-1\app\(shop)\account\orders\[id]\page.tsx`
+- startLine: `1`
+
+**Result:**
+
+```
+import { notFound } from 'next/navigation'
+import { getOrderDetail } from '@/lib/actions/checkout'
+import { formatPrice } from '@/lib/format'
+import Link from 'next/link'
+
+const STATUS_LABELS: Record<string, string> = {
+  ACCEPTED: 'Przyjęte',
+  PROCESSING: 'W realizacji',
+  SHIPPED: 'Wysłane',
+  DELIVERED: 'Dostarczone',
+  CANCELLED: 'Anulowane',
+}
+
+export default async function OrderDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}) {
+  const { id } = await params
+  const order = await getOrderDetail(id)
+  if (!order) notFound()
+
+  return (
+    <div>
+      <div className="flex items-center gap-3 mb-6">
+        <Link href="/account/orders" className="text-gray-400 hover:text-gray-600">
+          ←
+        </Link>
+        <h1 className="text-2xl font-bold">Zamówienie #{order.orderNumber}</h1>
+      </div>
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **page.tsx**</summary>
+
+@@ lines 40-40 @@
+
+```
+DeliveryCost
+```
+
+@@ lines 2-2 @@
+
+```
+DeliveryCost, formatPrice } from '@/lib/format
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+
+```
+
+```
+
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **page.tsx**</summary>
+
+@@ lines 70-70 @@
+
+```
+DeliveryCost
+```
+
+@@ lines 3-3 @@
+
+```
+DeliveryCost, format
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="task" data-tool-name="manage_todo_list"><details>
+<summary>Tool use: **manage_todo_list**</summary>
+
+Completed: *Adjust integration tests for new return types* (2/5)
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="vscode_askQuestions"><details>
+<summary>Tool use: **vscode_askQuestions**</summary>
+
+Analyzing your answers...
+
+**Input:**
+
+- questions:
+
+```
+[
+  {
+    "header": "Etap 4",
+    "options": [
+      {
+        "label": "OK, uruchom typecheck i lint",
+        "recommended": true
+      },
+      {
+        "label": "Mam korekty"
+      }
+    ],
+    "question": "Czy zmiana na stronach sukcesu i szczegółów zamówienia jest zaakceptowana?"
+  }
+]
+```
+
+
+**Result:**
+
+```
+{"answers":{"Etap 4":{"selected":["OK, uruchom typecheck i lint"],"freeText":null,"skipped":false}}}
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` npm run typecheck; npm run lint`
+
+Weryfikacja etapu 4: typecheck i lint
+
+```bash
+npm run typecheck; npm run lint
+```
+
+**Result:**
+
+```
+
+> shopeasy-devs@0.1.0 typecheck
+> tsc --noEmit
+
+
+> shopeasy-devs@0.1.0 lint
+> eslint
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="vscode_askQuestions"><details>
+<summary>Tool use: **vscode_askQuestions**</summary>
+
+Analyzing your answers...
+
+**Input:**
+
+- questions:
+
+```
+[
+  {
+    "header": "Etap 4: wyniki i testy",
+    "options": [
+      {
+        "label": "Zatwierdzam, bez dodatkowego kroku w E2E; zaktualizuj Postęp i zrób commit WIP",
+        "recommended": true
+      },
+      {
+        "label": "Zatwierdzam, dodaj w E2E też przejście do szczegółów zamówienia; zaktualizuj Postęp i zrób commit WIP"
+      },
+      {
+        "label": "Mam uwagi"
+      }
+    ],
+    "question": "Czy zatwierdzasz wyniki i plan testów etapu 4?"
+  }
+]
+```
+
+
+**Result:**
+
+```
+{"answers":{"Etap 4: wyniki i testy":{"selected":["Zatwierdzam, dodaj w E2E też przejście do szczegółów zamówienia; zaktualizuj Postęp i zrób commit WIP"],"freeText":null,"skipped":false}}}
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **plan-darmowy-kurier-frontend.md**</summary>
+
+@@ lines 56-56 @@
+
+```
+, na stronie sukcesu wiersz „Dostawa” = „Gratis”, a po przejściu do „Moje zamówienia” i szczegółów zamówienia (`/account/orders/<id>`) też „Gratis” (zatwierdzone w etapie 4)
+```
+
+@@ lines 52-52 @@
+
+```
+brak znanych ograniczeń stanu pośredniego; dokumentacja i E2E (etapy 5-6) czekają
+```
+
+@@ lines 45-46 @@
+
+```
+`4ed2e74` (WIP).
+- [x] **4. Sukces i historia zamówień** — `formatDeliveryCost` zamiast `formatPrice` w wierszu „Dostawa” na `checkout/success` i `account/orders/[id]`. Commit WIP (hash w następnym etapie)
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` git add "app/\(shop\)/checkout/success/page.tsx" "app/\(shop\)/account/orders/\[i...`
+
+Commit WIP etapu 4 z jawnie wskazanymi plikami
+
+```bash
+git add "app/(shop)/checkout/success/page.tsx" "app/(shop)/account/orders/[id]/page.tsx" docs/plan-darmowy-kurier-frontend.md && git commit -m "WIP: darmowy kurier DHL od 300 zł - frontend (sukces i szczegóły zamówienia)" && git status --short
+```
+
+**Result:**
+
+```
+[main 97234aa] WIP: darmowy kurier DHL od 300 zł - frontend (sukces i szczegóły zamówienia)
+ 3 files changed, 8 insertions(+), 8 deletions(-)
+ M docs/ai-sessions/2026-10-07_07-52-25Z-wdrozenie-polityki-dostawy.md
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="vscode_askQuestions"><details>
+<summary>Tool use: **vscode_askQuestions**</summary>
+
+Analyzing your answers...
+
+**Input:**
+
+- questions:
+
+```
+[
+  {
+    "header": "Etap 5",
+    "options": [
+      {
+        "label": "Tak, zaczynaj etap 5 (dokumentacja)",
+        "recommended": true
+      },
+      {
+        "label": "Zatrzymaj się tutaj"
+      }
+    ],
+    "question": "Czy zaczynać etap 5?"
+  }
+]
+```
+
+
+**Result:**
+
+```
+{"answers":{"Etap 5":{"selected":["Zatrzymaj się tutaj"],"freeText":null,"skipped":false}}}
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+Zatrzymuję się po etapie 4. Wszystko, co zrobione, jest zacommitowane: etapy 1-4 w commitach `1e507a0`, `2a6cafc`, `4ed2e74`, `97234aa`.
+
+**Zostało do zrobienia:**
+- Etap 5: dopisanie progu 300 zł w `product-contract.md`, sekcja „Dostawa i zamówienie”.
+- Etap 6: test E2E `tests/e2e/darmowa-dostawa.spec.ts`. Uruchamiam go przez `npm run test:e2e`, a Ty dbasz o wolny port 3100 i bazę w stanie startowym.
+
+**Nie uruchamiano nigdy, dla żadnego etapu:** `test:e2e`, `build` i weryfikacji w przeglądarce.
+
+Sekcja Postęp w `docs/plan-darmowy-kurier-frontend.md` jest aktualna. Jedyna rzecz w working tree to niezwiązany z etapami plik z `ai-sessions`.
+
+Kiedy będziesz gotowy, napisz, od którego etapu wznowić.
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="task" data-tool-name="manage_todo_list"><details>
+<summary>Tool use: **manage_todo_list**</summary>
+
+Updated todo list
+</details></tool-use>
