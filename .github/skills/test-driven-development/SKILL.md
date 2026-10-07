@@ -20,6 +20,7 @@ Prowadzi użytkownika przez cykl małymi krokami. Użytkownik decyduje na bramka
 
 - Nie zgaduj i nie zakładaj. Niejasność → zapytaj przez `vscode_askQuestions` i **zatrzymaj się**.
 - Pracuj na **jednym punkcie TODO naraz**.
+- **Grupowanie:** na bramce RED możesz zaproponować kilka blisko powiązanych punktów TODO (np. warianty tej samej funkcji) w jednej turze RGR. Użytkownik zatwierdza grupę na `[STOP]`. Każdy punkt ma własny test; RED, GREEN i REFACTOR przechodzą całą grupę, a zielony zestaw i pytanie o commit dotyczą grupy.
 - **RED** zmienia tylko TODO (i test bieżącego punktu). Nie dotyka kodu produkcyjnego.
 - **GREEN** to minimum kodu, które spina pinezkę. Nowa potrzeba odkryta w trakcie **nie jest implementowana**: dopisz ją do TODO i wróć do bieżącego punktu.
 - **REFACTOR** zmienia tylko to, co nie jest pinezką ani TODO. Gdy trzeba ruszyć pinezkę lub TODO, to nie jest refaktor: wróć do RED.
