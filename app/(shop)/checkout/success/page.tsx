@@ -1,5 +1,5 @@
 import { getOrderDetail } from '@/lib/actions/checkout'
-import { formatPrice } from '@/lib/products'
+import { formatDeliveryCost, formatPrice } from '@/lib/format'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
@@ -37,7 +37,7 @@ export default async function CheckoutSuccessPage({
           ))}
           <div className="flex justify-between text-sm text-gray-500">
             <span>Dostawa</span>
-            <span>{formatPrice(order.deliveryCost)}</span>
+            <span>{formatDeliveryCost(order.deliveryCost)}</span>
           </div>
         </div>
         <div className="border-t mt-4 pt-4 flex justify-between font-bold">

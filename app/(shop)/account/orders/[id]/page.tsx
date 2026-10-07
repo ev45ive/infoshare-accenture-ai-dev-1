@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import { getOrderDetail } from '@/lib/actions/checkout'
-import { formatPrice } from '@/lib/format'
+import { formatDeliveryCost, formatPrice } from '@/lib/format'
 import Link from 'next/link'
 
 const STATUS_LABELS: Record<string, string> = {
@@ -67,7 +67,7 @@ export default async function OrderDetailPage({
           <div className="border-t mt-4 pt-4 space-y-2">
             <div className="flex justify-between text-sm text-gray-500">
               <span>Dostawa</span>
-              <span>{formatPrice(order.deliveryCost)}</span>
+              <span>{formatDeliveryCost(order.deliveryCost)}</span>
             </div>
             <div className="flex justify-between font-bold">
               <span>Razem</span>

@@ -42,18 +42,18 @@ Zmiana UI/zachowania — klient widzi tę samą kwotę dostawy, którą zapisuje
 
 - [x] **1. Koszyk** — `CartSummary`: wiersz „Dostawa” („Od 9,99 zł; gratis kurierem od 300 zł”), natywny `<progress>`, komunikaty „Brakuje X zł…” / „Masz darmową dostawę kurierem DHL”. Commit `1e507a0` (WIP).
 - [x] **2. Strona dostawy** — usunięte lokalne `DELIVERY_OPTIONS` i `formatPrice`; koszt i suma z `calculateOrderTotals`/`calculateDeliveryCost`; kurier „Gratis” z przekreśloną ceną bazową; lokalna mapa `DELIVERY_TEXT` tylko na etykiety. Commit `2a6cafc` (WIP).
-- [x] **3. Płatność** — `orderTotal` z `calculateOrderTotals(items, deliveryMethod)` zamiast ceny z `DELIVERY_OPTIONS`; w `sessionStorage` tylko id metody. Commit WIP (hash w następnym etapie).
-- [ ] **4. Sukces i historia zamówień** — nierozpoczęty.
+- [x] **3. Płatność** — `orderTotal` z `calculateOrderTotals(items, deliveryMethod)` zamiast ceny z `DELIVERY_OPTIONS`; w `sessionStorage` tylko id metody. Commit `4ed2e74` (WIP).
+- [x] **4. Sukces i historia zamówień** — `formatDeliveryCost` zamiast `formatPrice` w wierszu „Dostawa” na `checkout/success` i `account/orders/[id]`. Commit WIP (hash w następnym etapie).
 - [ ] **5. Dokumentacja** — nierozpoczęty.
 - [ ] **6. E2E** — nierozpoczęty.
 
 **Weryfikacja:** `typecheck` i `lint` przechodzą. Nie uruchamiano: `test:unit`, `test:e2e`, `build`. Nie sprawdzano w przeglądarce przez agenta (ręcznie zaakceptowano kod).
 
-**Uwaga:** UI sukcesu i historii zamówień nadal formatuje dostawę przez `formatPrice` (0 zł zamiast „Gratis”) do końca etapu 4.
+**Uwaga:** brak znanych ograniczeń stanu pośredniego; dokumentacja i E2E (etapy 5-6) czekają.
 
 ## Plan testów
 - Unit: bez nowych (logika progu i „Gratis” już pokryta w `tests/unit/checkout.test.ts`; brakująca kwota to jedno odejmowanie inline i jest widoczna w E2E).
-- E2E (zatwierdzone: pełny zakup, nowy plik `tests/e2e/darmowa-dostawa.spec.ts`; `baseline.spec.ts` bez zmian): koszyk gościa: słuchawki → „Brakuje 0,01 zł…”; dodanie świecy → „Masz darmową dostawę…”; usunięcie świecy → „Brakuje 0,01 zł…”; ponowne dodanie świecy, logowanie, dostawa kurierem „Gratis” (razem 339,98 zł), płatność BLIK, `order.deliveryCost` = 0 i `order.total` = `order.subtotal` w bazie. Sprzątanie w `finally`/`afterAll`: zamówienie, pozycje, historia statusów, adres, pozycje koszyka użytkownika (po sprawdzeniu kaskad w `prisma/schema.prisma`). Lokatory po roli/etykiecie. Uruchomienie: `npm run test:e2e` (zatwierdzone; Playwright startuje serwer; port 3100 wolny, baza w stanie startowym po stronie użytkownika).
+- E2E (zatwierdzone: pełny zakup, nowy plik `tests/e2e/darmowa-dostawa.spec.ts`; `baseline.spec.ts` bez zmian): koszyk gościa: słuchawki → „Brakuje 0,01 zł…”; dodanie świecy → „Masz darmową dostawę…”; usunięcie świecy → „Brakuje 0,01 zł…”; ponowne dodanie świecy, logowanie, dostawa kurierem „Gratis” (razem 339,98 zł), płatność BLIK, `order.deliveryCost` = 0 i `order.total` = `order.subtotal` w bazie, na stronie sukcesu wiersz „Dostawa” = „Gratis”, a po przejściu do „Moje zamówienia” i szczegółów zamówienia (`/account/orders/<id>`) też „Gratis” (zatwierdzone w etapie 4). Sprzątanie w `finally`/`afterAll`: zamówienie, pozycje, historia statusów, adres, pozycje koszyka użytkownika (po sprawdzeniu kaskad w `prisma/schema.prisma`). Lokatory po roli/etykiecie. Uruchomienie: `npm run test:e2e` (zatwierdzone; Playwright startuje serwer; port 3100 wolny, baza w stanie startowym po stronie użytkownika).
 - Etapy 2-4 bez osobnych testów: pokrywa je scenariusz E2E z etapu 6.
 
 ## Dokumentacja
