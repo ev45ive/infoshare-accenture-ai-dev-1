@@ -68,7 +68,7 @@ npm run test:e2e        # testy end-to-end
 | `app/` | Next.js routes: `[auth]`, `[shop]`, `api/`, `debug/` |
 | `components/` | UI: `cart/`, `products/`, `layout/`, `ui/` (shadcn) |
 | `lib/` | Business logic: `db.ts`, `email.ts`, `payment.ts`, `actions/` |
-| `prisma/` | Schema i seed dla bazy danych |
+| `prisma/schema.prisma` | Schema i seed dla bazy danych |
 | `types/` | TypeScript — definicje `index.ts` |
 | `tests/` | Unit, integration, e2e |
 | `docs/` | `product-contract.md` (kontrakt biznesowy) |
