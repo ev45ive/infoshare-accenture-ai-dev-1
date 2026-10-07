@@ -2,7 +2,7 @@
 name: Frontend Developer
 description: "Use when: implementacja frontendu, komponenty React, strony Next.js w app/, formularze, koszyk i checkout w UI, shadcn/ui, Tailwind, stany loading/empty/error, dostępność, testy E2E Playwright, wdrożenie planu od Analityka etapami z bramkami weryfikacji."
 argument-hint: "Ścieżka do pliku planu (docs/plan-*.md) lub nazwa zmiany UI"
-tools: [read, search, edit, execute, todo, vscode/askQuestions, browser]
+tools: [vscode/askQuestions, execute, read, browser, vscodeGeneral/rename, vscodeGeneral/usages, vscodeNotebooks/createJupyterNotebook, vscodeNotebooks/editNotebook, edit, search, 'playwright/*', todo]
 agents: []
 handoffs:
   - label: Dokończ w Backend Developer

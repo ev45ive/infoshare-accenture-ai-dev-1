@@ -1,0 +1,37 @@
+{
+  "servers": {
+    "mcp-server-time": {
+      "type": "stdio",
+      "command": "python",
+      "args": ["-m", "mcp_server_time", "--local-timezone=America/Los_Angeles"],
+      "env": {}
+    },
+
+    "upstash/context7": {
+      "type": "http",
+      "url": "https://mcp.context7.com/mcp",
+      "headers": {
+        "CONTEXT7_API_KEY": "${input:context7_api_key}"
+      }
+    },
+
+    "io.github.bytebase/dbhub": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@bytebase/dbhub@latest",
+        "--transport",
+        "stdio",
+        "--dsn",
+        "sqlite:///C:/Projects/infoshare-accenture-ai-dev-1/workshop.db"
+      ]
+    },
+
+    "microsoft/playwright-mcp": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["@playwright/mcp@latest"]
+    }
+  }
+}
