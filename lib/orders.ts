@@ -6,6 +6,7 @@ import { formatPrice, formatDeliveryCost } from '@/lib/format'
 import type { PaymentMethod } from '@prisma/client'
 import type { SessionUser } from '@/types'
 import { DELIVERY_OPTIONS, calculateOrderTotals, type DeliveryMethod } from '@/lib/constants/checkout'
+import { CHECKOUT_LIMIT_MESSAGE, classifyCheckoutItems } from '@/lib/constants/cart'
 
 // Bez 'use server': eksport tutaj nie może stać się publiczną akcją przyjmującą dowolnego użytkownika.
 
@@ -41,21 +42,33 @@ export async function placeOrder(user: SessionUser, params: CreateOrderParams): 
   }
 
   // Pobierz koszyk
-  const cartItems = await db.cartItem.findMany({
+  let cartItems = await db.cartItem.findMany({
     where: { userId: user.id },
     include: { product: true },
   })
 
+  // Pozycje ze stanem 0 są usuwane po cichu, zamówienie idzie z pozostałych.
+  const issues = classifyCheckoutItems(
+    cartItems.map((i) => ({ productId: i.productId, quantity: i.quantity, stock: i.product.stock })),
+  )
+  if (issues.remove.length > 0) {
+    await db.cartItem.deleteMany({ where: { userId: user.id, productId: { in: issues.remove } } })
+    cartItems = cartItems.filter((i) => !issues.remove.includes(i.productId))
+  }
+
   if (cartItems.length === 0) return { success: false, error: 'Koszyk jest pusty.' }
 
-  // KOS-08: sprawdź dostępność produktów
-  const unavailable = cartItems.filter((i) => i.product.stock === 0)
-  if (unavailable.length > 0) {
-    return {
-      success: false,
-      error: 'Niektóre produkty w koszyku stały się niedostępne.',
-      unavailableProducts: unavailable.map((i) => i.product.name),
-    }
+  // Ilość ponad min(10, stan): przytnij w koszyku i nie twórz zamówienia.
+  if (issues.clamp.length > 0) {
+    await db.$transaction(
+      issues.clamp.map((c) =>
+        db.cartItem.update({
+          where: { userId_productId: { userId: user.id, productId: c.productId } },
+          data: { quantity: c.quantity },
+        }),
+      ),
+    )
+    return { success: false, error: CHECKOUT_LIMIT_MESSAGE }
   }
 
   const deliveryOption = DELIVERY_OPTIONS.find((o) => o.id === params.deliveryMethod)

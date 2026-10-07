@@ -17,6 +17,9 @@ export function isValidQuantity(quantity: number): boolean {
 
 export const INVALID_QUANTITY_MESSAGE = 'Nieprawidłowa ilość.'
 
+export const CHECKOUT_LIMIT_MESSAGE =
+  'Maksymalna ilość jednego produktu to 10 szt. (z uwzględnieniem stanu). Ilości zostały dostosowane, sprawdź koszyk i spróbuj ponownie.'
+
 export function getLimitExceededMessage(stock: number): string {
   return `Maksymalnie ${getItemLimit(stock)} szt. tego produktu (dostępne: ${stock}).`
 }

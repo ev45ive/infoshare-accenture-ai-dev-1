@@ -1,12 +1,30 @@
 import { after, before, test } from 'node:test'
 import assert from 'node:assert/strict'
 import { addToCart, mergeCart, updateCartQuantity } from '../../lib/cart'
+import { placeOrder } from '../../lib/orders'
+import { clearEmails, getEmailsTo } from '../../lib/email'
+import { CHECKOUT_LIMIT_MESSAGE } from '../../lib/constants/cart'
 import { db } from '../../lib/db'
 
 // Własny użytkownik, bo checkout.test.ts używa test@shopeasy.pl, a pliki testów działają równolegle.
 const USER_EMAIL = 'limit-test@shopeasy.pl'
+const ADDRESS = {
+  firstName: 'Jan',
+  lastName: 'Testowy',
+  street: 'Testowa 1',
+  city: 'Warszawa',
+  postalCode: '00-001',
+  phone: '123456789',
+}
 
 let userId: string
+
+function checkout() {
+  return placeOrder(
+    { id: userId, email: USER_EMAIL, name: 'Limit Test' },
+    { address: ADDRESS, paymentMethod: 'CARD', deliveryMethod: 'COURIER' },
+  )
+}
 
 async function cleanupUser() {
   const user = await db.user.findUnique({ where: { email: USER_EMAIL } })
@@ -28,6 +46,7 @@ async function cartQuantity(productId: string) {
 const bySlug = (slug: string) => db.product.findUniqueOrThrow({ where: { slug } })
 
 before(async () => {
+  clearEmails()
   await cleanupUser()
   const user = await db.user.create({ data: { email: USER_EMAIL, name: 'Limit Test', passwordHash: 'x' } })
   userId = user.id
@@ -35,6 +54,7 @@ before(async () => {
 
 after(async () => {
   await cleanupUser()
+  clearEmails()
   await db.$disconnect()
 })
 
@@ -204,4 +224,60 @@ test('merge pomija pozycje z nieprawidłową ilością i zapisuje pozostałe', a
 
   assert.equal(await cartQuantity(powerbank.id), undefined)
   assert.equal(await cartQuantity(mouse.id), 2)
+})
+
+// ─── placeOrder ─────────────────────────────────────────────────────
+
+test('checkout usuwa pozycję ze stanem 0 i składa zamówienie z pozostałych', async () => {
+  const unavailable = await bySlug('sneakersy-urbanrun-pro')
+  const mouse = await bySlug('mysz-swiftclick-8k')
+  assert.equal(unavailable.stock, 0)
+  await setCart([
+    { productId: unavailable.id, quantity: 1 },
+    { productId: mouse.id, quantity: 2 },
+  ])
+  clearEmails()
+
+  const result = await checkout()
+
+  assert.ok(result.success, 'zamówienie powinno się powieść')
+  const order = await db.order.findUniqueOrThrow({ where: { id: result.orderId }, include: { items: true } })
+  assert.deepEqual(order.items.map((i) => [i.productId, i.quantity]), [[mouse.id, 2]])
+  assert.equal(order.subtotal, mouse.price * 2)
+  assert.equal(await db.cartItem.count({ where: { userId } }), 0)
+  assert.equal(getEmailsTo(USER_EMAIL).length, 1)
+})
+
+test('checkout z samymi pozycjami o stanie 0 zwraca pusty koszyk i nie tworzy zamówienia', async () => {
+  const unavailable = await bySlug('sneakersy-urbanrun-pro')
+  await setCart([{ productId: unavailable.id, quantity: 1 }])
+  const ordersBefore = await db.order.count({ where: { userId } })
+  clearEmails()
+
+  const result = await checkout()
+
+  assert.deepEqual(result, { success: false, error: 'Koszyk jest pusty.' })
+  assert.equal(await db.order.count({ where: { userId } }), ordersBefore)
+  assert.equal(await db.cartItem.count({ where: { userId } }), 0)
+  assert.equal(getEmailsTo(USER_EMAIL).length, 0)
+})
+
+test('checkout z ilością ponad limit przycina pozycje, zwraca błąd i nie tworzy zamówienia', async () => {
+  const powerbank = await bySlug('powerbank-ultracharge-20000')
+  const espresso = await bySlug('ekspres-brewmaster-500')
+  await setCart([
+    { productId: powerbank.id, quantity: 12 },
+    { productId: espresso.id, quantity: espresso.stock + 2 },
+  ])
+  const ordersBefore = await db.order.count({ where: { userId } })
+  clearEmails()
+
+  const result = await checkout()
+
+  assert.deepEqual(result, { success: false, error: CHECKOUT_LIMIT_MESSAGE })
+  assert.equal(await cartQuantity(powerbank.id), 10)
+  assert.equal(await cartQuantity(espresso.id), espresso.stock)
+  assert.equal(await db.order.count({ where: { userId } }), ordersBefore)
+  assert.equal(getEmailsTo(USER_EMAIL).length, 0)
+  assert.equal((await bySlug('powerbank-ultracharge-20000')).stock, powerbank.stock)
 })
