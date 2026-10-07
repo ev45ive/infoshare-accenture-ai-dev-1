@@ -39,3 +39,10 @@ Zawiera limit i dostępną ilość, np. „Maksymalnie 10 szt. tego produktu (do
 - Odczyt koszyka zalogowanego (`/api/cart`) już zawiera `product.stock`; frontend używa go do wyliczenia limitu i stanu „niedostępny”.
 - Koszyk gościa: pozycja musi nieść stan potrzebny do limitu (decyzja realizacji w fazie frontendu).
 - Pozycja ze `stock = 0`: wyszarzona w koszyku, komunikat „Ten produkt nie jest dostępny”, zwiększanie zablokowane, ręczne usuwanie możliwe.
+
+## Oczekiwania frontendu
+
+- Frontend rozróżnia tytuł błędu checkoutu po obecności `code` w `PlaceOrderResult`: z `code` pokazuje "Błąd płatności", bez `code` (błędy koszyka) "Nie udało się złożyć zamówienia". Backend nie powinien dodawać `code` do błędów koszyka bez uzgodnienia, bo zmieni to tytuł w UI.
+- Po odrzuconym zamówieniu frontend pobiera koszyk z `/api/cart`, więc przycięte ilości i usunięte pozycje muszą być już zapisane w bazie.
+- Frontend pokazuje `error` z `addToDbCart` i `updateDbCartQuantity` bez zmian; komunikat powinien zawierać limit i dostępną ilość.
+- `/api/cart` zwraca `product.stock` (używane do limitu i stanu "niedostępny").
