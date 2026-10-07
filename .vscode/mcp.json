@@ -24,7 +24,7 @@
         "--transport",
         "stdio",
         "--dsn",
-        "sqlite:///C:/Projects/infoshare-accenture-ai-dev-1/workshop.db"
+        "sqlite:///${workspaceFolder}/workshop.db"
       ]
     },
 
