@@ -9,22 +9,18 @@ import { useCart } from '@/hooks/useCart'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { DELIVERY_OPTIONS, calculateDeliveryCost, calculateOrderTotals, type DeliveryMethod } from '@/lib/constants/checkout'
+import { formatDeliveryCost, formatPrice } from '@/lib/format'
 import type { z } from 'zod'
 
-type DeliveryMethod = 'COURIER' | 'PARCEL_LOCKER'
-
-const DELIVERY_OPTIONS = [
-  { id: 'COURIER' as DeliveryMethod, label: 'Kurier DHL', sublabel: '1–2 dni robocze', price: 1499 },
-  { id: 'PARCEL_LOCKER' as DeliveryMethod, label: 'Paczkomat InPost', sublabel: '2–3 dni robocze', price: 999 },
-]
-
-function formatPrice(grosze: number) {
-  return (grosze / 100).toLocaleString('pl-PL', { style: 'currency', currency: 'PLN' })
+const DELIVERY_TEXT: Record<DeliveryMethod, { label: string; sublabel: string }> = {
+  COURIER: { label: 'Kurier DHL', sublabel: '1–2 dni robocze' },
+  PARCEL_LOCKER: { label: 'Paczkomat InPost', sublabel: '2–3 dni robocze' },
 }
 
 export default function DeliveryPage() {
   const router = useRouter()
-  const { items, total, count, formatPrice: cartFormatPrice } = useCart()
+  const { items, count, formatPrice: cartFormatPrice } = useCart()
   const [selectedDelivery, setSelectedDelivery] = useState<DeliveryMethod>('COURIER')
 
   const {
@@ -47,8 +43,7 @@ export default function DeliveryPage() {
     router.push('/checkout/payment')
   }
 
-  const deliveryCost = DELIVERY_OPTIONS.find((o) => o.id === selectedDelivery)!.price
-  const orderTotal = total + deliveryCost
+  const { subtotal, deliveryCost, total: orderTotal } = calculateOrderTotals(items, selectedDelivery)
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
@@ -119,35 +114,43 @@ export default function DeliveryPage() {
             <div className="bg-white border rounded-xl p-6 space-y-3">
               <h2 className="font-semibold text-lg">Metoda dostawy</h2>
               <div className="space-y-3">
-                {DELIVERY_OPTIONS.map((option) => (
-                  <button
-                    key={option.id}
-                    type="button"
-                    onClick={() => setSelectedDelivery(option.id)}
-                    className={`w-full flex items-center justify-between p-4 rounded-lg border-2 transition-colors text-left ${
-                      selectedDelivery === option.id
-                        ? 'border-blue-600 bg-blue-50'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                          selectedDelivery === option.id ? 'border-blue-600' : 'border-gray-400'
-                        }`}
-                      >
-                        {selectedDelivery === option.id && (
-                          <div className="w-2 h-2 rounded-full bg-blue-600" />
+                {DELIVERY_OPTIONS.map((option) => {
+                  const optionCost = calculateDeliveryCost(subtotal, option.id)
+                  return (
+                    <button
+                      key={option.id}
+                      type="button"
+                      onClick={() => setSelectedDelivery(option.id)}
+                      className={`w-full flex items-center justify-between p-4 rounded-lg border-2 transition-colors text-left ${
+                        selectedDelivery === option.id
+                          ? 'border-blue-600 bg-blue-50'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                            selectedDelivery === option.id ? 'border-blue-600' : 'border-gray-400'
+                          }`}
+                        >
+                          {selectedDelivery === option.id && (
+                            <div className="w-2 h-2 rounded-full bg-blue-600" />
+                          )}
+                        </div>
+                        <div>
+                          <p className="font-medium">{DELIVERY_TEXT[option.id].label}</p>
+                          <p className="text-sm text-gray-500">{DELIVERY_TEXT[option.id].sublabel}</p>
+                        </div>
+                      </div>
+                      <span className="font-semibold">
+                        {optionCost < option.cost && (
+                          <s className="mr-2 font-normal text-gray-500">{formatPrice(option.cost)}</s>
                         )}
-                      </div>
-                      <div>
-                        <p className="font-medium">{option.label}</p>
-                        <p className="text-sm text-gray-500">{option.sublabel}</p>
-                      </div>
-                    </div>
-                    <span className="font-semibold">{formatPrice(option.price)}</span>
-                  </button>
-                ))}
+                        {formatDeliveryCost(optionCost)}
+                      </span>
+                    </button>
+                  )
+                })}
               </div>
             </div>
 
@@ -182,11 +185,11 @@ export default function DeliveryPage() {
             <div className="border-t mt-4 pt-4 space-y-2 text-sm">
               <div className="flex justify-between text-gray-600">
                 <span>Produkty</span>
-                <span>{cartFormatPrice(total)}</span>
+                <span>{cartFormatPrice(subtotal)}</span>
               </div>
               <div className="flex justify-between text-gray-600">
                 <span>Dostawa</span>
-                <span>{formatPrice(deliveryCost)}</span>
+                <span>{formatDeliveryCost(deliveryCost)}</span>
               </div>
               <div className="flex justify-between font-bold text-base pt-2 border-t">
                 <span>Razem</span>

@@ -40,8 +40,8 @@ Zmiana UI/zachowania — klient widzi tę samą kwotę dostawy, którą zapisuje
 
 ## Postęp (stan na 2026-10-07)
 
-- [x] **1. Koszyk** — `CartSummary`: wiersz „Dostawa” („Od 9,99 zł; gratis kurierem od 300 zł”), natywny `<progress>`, komunikaty „Brakuje X zł…” / „Masz darmową dostawę kurierem DHL”. Commit WIP (hash w następnym etapie).
-- [ ] **2. Strona dostawy** — nierozpoczęty.
+- [x] **1. Koszyk** — `CartSummary`: wiersz „Dostawa” („Od 9,99 zł; gratis kurierem od 300 zł”), natywny `<progress>`, komunikaty „Brakuje X zł…” / „Masz darmową dostawę kurierem DHL”. Commit `1e507a0` (WIP).
+- [x] **2. Strona dostawy** — usunięte lokalne `DELIVERY_OPTIONS` i `formatPrice`; koszt i suma z `calculateOrderTotals`/`calculateDeliveryCost`; kurier „Gratis” z przekreśloną ceną bazową; lokalna mapa `DELIVERY_TEXT` tylko na etykiety. Commit WIP (hash w następnym etapie).
 - [ ] **3. Płatność** — nierozpoczęty.
 - [ ] **4. Sukces i historia zamówień** — nierozpoczęty.
 - [ ] **5. Dokumentacja** — nierozpoczęty.
@@ -49,7 +49,7 @@ Zmiana UI/zachowania — klient widzi tę samą kwotę dostawy, którą zapisuje
 
 **Weryfikacja:** `typecheck` i `lint` przechodzą. Nie uruchamiano: `test:unit`, `test:e2e`, `build`. Nie sprawdzano w przeglądarce przez agenta (ręcznie zaakceptowano kod).
 
-**Uwaga:** UI pozostałych kroków checkoutu nadal liczy kuriera po staremu (14,99 zł) do końca etapów 2-4.
+**Uwaga:** UI płatności, sukcesu i historii zamówień nadal liczy lub formatuje dostawę po staremu do końca etapów 3-4.
 
 ## Plan testów
 - Unit: bez nowych (logika progu i „Gratis” już pokryta w `tests/unit/checkout.test.ts`; brakująca kwota to jedno odejmowanie inline i jest widoczna w E2E).
