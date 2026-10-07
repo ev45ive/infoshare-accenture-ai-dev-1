@@ -45,3 +45,44 @@ export function checkGuestUpdate(currentQuantity: number, newQuantity: number): 
     ? { ok: false, error: getLimitMessage() }
     : { ok: true }
 }
+
+export type CartRow = {
+  productId: string
+  quantity: number
+  product: { name: string; price: number; imageUrl: string; stock: number }
+}
+
+export type CartItemState = {
+  canIncrease: boolean
+  canDecrease: boolean
+  unavailable: boolean
+  overLimit: boolean
+  message: string | null
+}
+
+export function mapCartRow(row: CartRow) {
+  return {
+    productId: row.productId,
+    name: row.product.name,
+    price: row.product.price,
+    quantity: row.quantity,
+    imageUrl: row.product.imageUrl,
+    stock: row.product.stock,
+  }
+}
+
+export function getCartItemState(item: { quantity: number; stock?: number }): CartItemState {
+  const unavailable = isUnavailable(item.stock)
+  const overLimit = item.quantity > getItemLimit(item.stock)
+  return {
+    canIncrease: canIncrease(item.quantity, item.stock),
+    canDecrease: canDecrease(item.quantity),
+    unavailable,
+    overLimit,
+    message: unavailable
+      ? CART_MESSAGES.unavailable
+      : overLimit
+        ? getLimitMessage(item.stock)
+        : null,
+  }
+}

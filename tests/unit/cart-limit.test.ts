@@ -8,6 +8,8 @@ import {
   getLimitMessage,
   checkGuestAdd,
   checkGuestUpdate,
+  mapCartRow,
+  getCartItemState,
 } from '../../hooks/cart-limit'
 
 // ─── getItemLimit ───────────────────────────────────────────────────
@@ -140,4 +142,65 @@ test('zwiększenie pozycji ponad limit jest odrzucone', () => {
     ok: false,
     error: 'Maksymalnie 10 szt. tego produktu.',
   })
+})
+
+// ─── mapCartRow ─────────────────────────────────────────────────────
+
+test('wiersz koszyka z API jest mapowany na pozycję wraz ze stanem produktu', () => {
+  const row = {
+    productId: 'p1',
+    quantity: 3,
+    product: { name: 'Kubek', price: 2500, imageUrl: '/kubek.png', stock: 4 },
+  }
+  assert.deepEqual(mapCartRow(row), {
+    productId: 'p1',
+    name: 'Kubek',
+    price: 2500,
+    quantity: 3,
+    imageUrl: '/kubek.png',
+    stock: 4,
+  })
+})
+
+// ─── getCartItemState ───────────────────────────────────────────────
+
+test('pozycja w limicie ma aktywne kontrolki i brak komunikatu', () => {
+  assert.deepEqual(getCartItemState({ quantity: 3 }), {
+    canIncrease: true,
+    canDecrease: true,
+    unavailable: false,
+    overLimit: false,
+    message: null,
+  })
+})
+
+test('pozycja dokładnie na limicie ma zablokowane "+" i brak komunikatu', () => {
+  const state = getCartItemState({ quantity: 10 })
+  assert.equal(state.canIncrease, false)
+  assert.equal(state.overLimit, false)
+  assert.equal(state.message, null)
+})
+
+test('pozycja ze stanem 0 jest niedostępna, z komunikatem i zablokowanym "+"', () => {
+  const state = getCartItemState({ quantity: 1, stock: 0 })
+  assert.equal(state.unavailable, true)
+  assert.equal(state.canIncrease, false)
+  assert.equal(state.message, 'Ten produkt nie jest dostępny')
+})
+
+test('pozycja ponad limit 10 (gość) blokuje "+", pozwala zmniejszać i ma komunikat limitu', () => {
+  const state = getCartItemState({ quantity: 12 })
+  assert.equal(state.overLimit, true)
+  assert.equal(state.canIncrease, false)
+  assert.equal(state.canDecrease, true)
+  assert.equal(state.message, 'Maksymalnie 10 szt. tego produktu.')
+})
+
+test('pozycja ponad stan komunikuje limit i dostępną ilość', () => {
+  const state = getCartItemState({ quantity: 6, stock: 4 })
+  assert.equal(state.overLimit, true)
+  assert.equal(state.canIncrease, false)
+  assert.equal(state.canDecrease, true)
+  assert.equal(state.unavailable, false)
+  assert.equal(state.message, 'Maksymalnie 4 szt. tego produktu (dostępne: 4).')
 })

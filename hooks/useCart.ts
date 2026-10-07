@@ -10,6 +10,7 @@ import {
 } from '@/lib/actions/cart'
 import { formatPrice } from '@/lib/format'
 import { CART_MESSAGES } from './cart-messages'
+import { checkGuestAdd, checkGuestUpdate, mapCartRow, type CartRow } from './cart-limit'
 
 // Kształt pozycji koszyka — wspólny dla gościa i zalogowanego
 export type CartLineItem = {
@@ -18,6 +19,7 @@ export type CartLineItem = {
   price: number       // grosze
   quantity: number
   imageUrl: string
+  stock?: number      // brak dla gościa (stan nieznany)
 }
 
 export function useCart() {
@@ -51,15 +53,7 @@ export function useCart() {
       const res = await fetch('/api/cart')
       if (!res.ok) throw new Error('Nie udało się pobrać koszyka.')
       const rows = await res.json()
-      setDbItems(
-        rows.map((r: { productId: string; product: { name: string; price: number; imageUrl: string }; quantity: number }) => ({
-          productId: r.productId,
-          name: r.product.name,
-          price: r.product.price,
-          quantity: r.quantity,
-          imageUrl: r.product.imageUrl,
-        }))
-      )
+      setDbItems((rows as CartRow[]).map(mapCartRow))
     } catch {
       setError('Nie udało się pobrać koszyka. Odśwież stronę.')
     } finally {
@@ -111,6 +105,12 @@ export function useCart() {
       return { error: msg }
     }
 
+    const limitCheck = checkGuestAdd(guestItems, product.id, quantity)
+    if (!limitCheck.ok) {
+      setError(limitCheck.error)
+      return { error: limitCheck.error }
+    }
+
     guestAdd({ productId: product.id, name: product.name, price: product.price, quantity, imageUrl: product.imageUrl })
     return { success: true }
   }
@@ -126,10 +126,18 @@ export function useCart() {
 
   async function updateQty(productId: string, quantity: number) {
     if (quantity <= 0) return removeItem(productId)
+    setError(null)
     if (isLoggedIn) {
-      await updateDbCartQuantity(productId, quantity)
+      const result = await updateDbCartQuantity(productId, quantity)
+      if (result?.error) setError(result.error)
       await fetchDbCart()
     } else {
+      const current = guestItems.find((i) => i.productId === productId)?.quantity ?? 0
+      const limitCheck = checkGuestUpdate(current, quantity)
+      if (!limitCheck.ok) {
+        setError(limitCheck.error)
+        return
+      }
       guestUpdate(productId, quantity)
     }
   }
