@@ -1,16 +1,18 @@
-// Szkielet pod RED: sygnatury bez zachowania.
+const MAX_QUANTITY = 10
+
+// Stan nieznany (koszyk gościa) oznacza limit bez ograniczenia stanem.
 export function getItemLimit(stock?: number): number {
-  throw new Error('not implemented')
+  return stock === undefined ? MAX_QUANTITY : Math.min(MAX_QUANTITY, stock)
 }
 
 export function canIncrease(quantity: number, stock?: number): boolean {
-  throw new Error('not implemented')
+  return quantity < getItemLimit(stock)
 }
 
 export function canDecrease(quantity: number): boolean {
-  throw new Error('not implemented')
+  return quantity > 1
 }
 
 export function isUnavailable(stock?: number): boolean {
-  throw new Error('not implemented')
+  return stock === 0
 }

@@ -30,11 +30,11 @@ Zmiana zachowania (istniejący kod UI bez testów, więc pierwsze punkty działa
 ## TODO (RED)
 Kolejność = kolejność realizacji. Następny punkt oznacz `-> NEXT`.
 
-- [ ] 1. `getItemLimit(stock?)`: bez stanu zwraca 10, ze stanem `min(10, stan)`, stan 0 zwraca 0 -> NEXT | poziom: unit | pinezka dla dzisiejszego `min(10, stock)` w `AddToCartButton`
-- [ ] 2. `canIncrease(quantity, stock?)`: tak gdy `quantity < limit`; nie na limicie i ponad limitem | poziom: unit | dziś "+" zna tylko 10
-- [ ] 3. `canDecrease(quantity)`: tak gdy `quantity > 1`, także dla pozycji ponad limit | poziom: unit | pinezka dla dzisiejszego "−"
-- [ ] 4. `isUnavailable(stock?)`: `true` tylko dla stanu 0; brak stanu (gość) to `false` | poziom: unit
-- [ ] 5. `getLimitMessage(stock?)`: bez stanu "Maksymalnie 10 szt. tego produktu.", ze stanem "Maksymalnie 4 szt. tego produktu (dostępne: 4)." | poziom: unit | treść do zatwierdzenia przez Olę
+- [x] 1. `getItemLimit(stock?)`: bez stanu zwraca 10, ze stanem `min(10, stan)`, stan 0 zwraca 0 | poziom: unit | pinezka dla dzisiejszego `min(10, stock)` w `AddToCartButton`
+- [x] 2. `canIncrease(quantity, stock?)`: tak gdy `quantity < limit`; nie na limicie i ponad limitem | poziom: unit | dziś "+" zna tylko 10
+- [x] 3. `canDecrease(quantity)`: tak gdy `quantity > 1`, także dla pozycji ponad limit | poziom: unit | pinezka dla dzisiejszego "−"
+- [x] 4. `isUnavailable(stock?)`: `true` tylko dla stanu 0; brak stanu (gość) to `false` | poziom: unit
+- [ ] 5. `getLimitMessage(stock?)`: bez stanu "Maksymalnie 10 szt. tego produktu.", ze stanem "Maksymalnie 4 szt. tego produktu (dostępne: 4)." -> NEXT | poziom: unit | treść do zatwierdzenia przez Olę
 - [ ] 6. `checkGuestAdd(items, productId, qty)`: odrzuca gdy `existing + qty > 10`, zwraca komunikat; w limicie pozwala | poziom: unit | dziś store sumuje bez limitu
 - [ ] 7. `checkGuestUpdate(currentQty, newQty)`: odrzuca wzrost ponad 10; zmniejszenie dozwolone także z pozycji ponad limit | poziom: unit
 - [ ] 8. `mapCartRow(row)`: przenosi `product.stock` do pozycji zalogowanego (`stock` opcjonalne w `CartLineItem`) | poziom: unit | wymaga `stock` w `/api/cart` (jest wg kontraktu)
@@ -48,8 +48,8 @@ Kolejność = kolejność realizacji. Następny punkt oznacz `-> NEXT`.
 ## Rundy RGR
 Powiązane punkty realizujemy razem w jednej rundzie (jeden RED z kilkoma testami, jeden GREEN, jeden commit). Punkty zależne od backendu lub E2E zostają osobno.
 
-- Runda A: 1-4 (limit, `canIncrease`, `canDecrease`, `isUnavailable`) -> NEXT
-- Runda B: 5-7 (komunikat, `checkGuestAdd`, `checkGuestUpdate`)
+- Runda A: 1-4 (limit, `canIncrease`, `canDecrease`, `isUnavailable`) — zrobiona
+- Runda B: 5-7 (komunikat, `checkGuestAdd`, `checkGuestUpdate`) -> NEXT
 - Runda C: 8, 11, 12 (`mapCartRow`, helper stanu pozycji, `CartItem`)
 - Runda D: 9, 10, 13 (podpięcie w `useCart`, błędy serwera, checkout)
 - Runda E: 14 (E2E gościa)
@@ -57,8 +57,10 @@ Powiązane punkty realizujemy razem w jednej rundzie (jeden RED z kilkoma testam
 ## Pinezki (GREEN)
 Zachowania przypięte testami. Nie zmieniać w REFACTOR.
 
-- (brak)
-
+- Limit `min(10, stan)`, bez stanu 10, stan 0 daje 0: `tests/unit/cart-limit.test.ts` (testy `getItemLimit`)
+- "+" blokowany na limicie i powyżej, z uwzględnieniem stanu: `tests/unit/cart-limit.test.ts` (testy `canIncrease`)
+- "−" blokowany tylko przy ilości 1, także dla pozycji ponad limit: `tests/unit/cart-limit.test.ts` (testy `canDecrease`)
+- Niedostępny tylko przy stanie 0, brak stanu to nie niedostępność: `tests/unit/cart-limit.test.ts` (testy `isUnavailable`)
 ## Oczekiwania wobec backendu
 - `/api/cart` zwraca `product.stock` (kontrakt: już zwraca).
 - `addToDbCart`, `updateDbCartQuantity` zwracają `{ error }` z komunikatem zawierającym limit i dostępną ilość.
@@ -69,4 +71,4 @@ Zachowania przypięte testami. Nie zmieniać w REFACTOR.
 - 2026-10-07: odstępstwo od "jeden punkt naraz": powiązane punkty w rundach (patrz Rundy RGR), na prośbę użytkownika.
 
 ## Postęp
-- (nic nie rozpoczęto)
+- Runda A (pkt 1-4): RED / GREEN, commit: brak
