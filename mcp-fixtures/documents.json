@@ -1,0 +1,16 @@
+[
+  {
+    "id": "STORE-OPS-001",
+    "title": "Kontakt z obsługą sklepu",
+    "revision": "2026-10-04.1",
+    "source": "workshop://store-ops/STORE-OPS-001",
+    "content": "Fikcyjny sklep: adres kontaktowy help@shopeasy.example.test. Na stronie kontaktowej podaj dni pracy poniedziałek–piątek, 09:00–17:00 Europe/Warsaw. Nie zmieniaj wiadomości transakcyjnych ani kont użytkowników. Dokument używany do próby połączenia MCP."
+  },
+  {
+    "id": "PRODUCT-VARIANTS-001",
+    "title": "Etykiety wariantów produktu",
+    "revision": "2026-10-04.1",
+    "source": "workshop://product-catalog/PRODUCT-VARIANTS-001",
+    "content": "Fikcyjna specyfikacja: etykieta i wartość wariantu są polami tekstowymi. W prezentacji pokaż etykietę oraz wartość, np. Rozmiar: M. Wariant bez etykiety wymaga doprecyzowania źródła; nie zgaduj kategorii ani jednostki. Widok dostępności wariantów nie zmienia reguł koszyka, ceny ani płatności. Dokument stanowi wejście do planowania, nie instrukcję wykonania operacji."
+  }
+]

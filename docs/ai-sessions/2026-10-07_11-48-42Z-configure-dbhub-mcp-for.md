@@ -970,4 +970,166 @@ _**Agent (copilot/claude-sonnet-5.5)**_
 <summary>Tool use: **run_in_terminal**</summary>
 
 Running ` timeout 30 npx -y @bytebase/dbhub@latest --transport stdio --dsn "sqlite:///...`
+
+Test relative DSN and backslash Windows DSN formats
+
+```bash
+timeout 30 npx -y @bytebase/dbhub@latest --transport stdio --dsn "sqlite:///./workshop.db" < /dev/null 2>&1 | sed -n 1,16p; echo ---; timeout 30 npx -y @bytebase/dbhub@latest --transport stdio --dsn 'sqlite:///C:\Projects\infoshare-accenture-ai-dev-1\workshop.db' < /dev/null 2>&1 | sed -n 1,16p
+```
+
+**Result:**
+
+```
+Configuration source: command line argument
+Connecting to 1 database source(s)...
+  - default: sqlite:///./workshop.db
+Failed to connect to SQLite database: Error: unable to open database file
+    at _SQLiteConnector.connect (file:///C:/Projects/infoshare-accenture-ai-dev-1/node_modules/@bytebase/dbhub/dist/sqlite-AO2BKIC6.js:151:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async ConnectorManager.connectSource (file:///C:/Projects/infoshare-accenture-ai-dev-1/node_modules/@bytebase/dbhub/dist/chunk-MJVIE3QY.js:2039:7)
+    at async ConnectorManager.connectWithSources (file:///C:/Projects/infoshare-accenture-ai-dev-1/node_modules/@bytebase/dbhub/dist/chunk-MJVIE3QY.js:1873:7)
+    at async main (file:///C:/Projects/infoshare-accenture-ai-dev-1/node_modules/@bytebase/dbhub/dist/index.js:1915:5) {
+  code: 'ERR_SQLITE_ERROR',
+  errcode: 14,
+  errstr: 'unable to open database file'
+}
+Fatal error: Error: unable to open database file
+    at _SQLiteConnector.connect (file:///C:/Projects/infoshare-accenture-ai-dev-1/node_modules/@bytebase/dbhub/dist/sqlite-AO2BKIC6.js:151:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+---
+Configuration source: command line argument
+Connecting to 1 database source(s)...
+  - default: sqlite:///C:/Projects/infoshare-accenture-ai-dev-1/workshop.db
+Tool registry initialized
+
+ _____  ____  _   _       _     
+|  __ \|  _ \| | | |     | |    
+| |  | | |_) | |_| |_   _| |__  
+| |  | |  _ <|  _  | | | | '_ \ 
+| |__| | |_) | | | | |_| | |_) |
+|_____/|____/|_| |_|\__,_|_.__/ 
+                                
+v1.4.0 - Minimal Database MCP Server
+
+┌──────────────────────────────────────────────────────────────────────────────────────────┐
+│ default (sqlite)     │ C:/Projects/infoshare-accenture-ai-dev-1/workshop.db │            │
+```
 </details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` timeout 30 npx -y @bytebase/dbhub@latest --transport stdio --dsn 'sqlite:///...`
+
+Test mixed-separator DSN as ${workspaceFolder}/workshop.db would produce
+
+```bash
+timeout 30 npx -y @bytebase/dbhub@latest --transport stdio --dsn 'sqlite:///C:\Projects\infoshare-accenture-ai-dev-1/workshop.db' < /dev/null 2>&1 | sed -n 1,5p
+```
+
+**Result:**
+
+```
+Configuration source: command line argument
+Connecting to 1 database source(s)...
+  - default: sqlite:///C:/Projects/infoshare-accenture-ai-dev-1/workshop.db
+Tool registry initialized
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="replace_string_in_file"><details>
+<summary>Tool use: **replace_string_in_file**</summary>
+
+Replacing 1 lines with 1 lines in `mcp.json`
+
+**Input:**
+
+- filePath: `c:\Projects\infoshare-accenture-ai-dev-1\.vscode\mcp.json`
+- newString: `        "sqlite:///${workspaceFolder}/workshop.db"`
+- oldString: `        "sqlite:///C:/Projects/infoshare-accenture-ai-dev-1/workshop.db"`
+
+**Result:**
+
+```
+The following files were successfully edited:
+c:\Projects\infoshare-accenture-ai-dev-1\.vscode\mcp.json
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **mcp.json**</summary>
+
+@@ lines 27-27 @@
+
+```
+${workspaceFolder}
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+DSN w `.vscode/mcp.json` używa teraz `sqlite:///${workspaceFolder}/workshop.db`. Samej konfiguracji w VS Code nie uruchamiałem. Sprawdziłem w terminalu, że DBHub łączy się z bazą dla ścieżki w takiej postaci, jaką da `${workspaceFolder}` na Windows (`C:\Projects\...` z `workshop.db` na końcu).
+
+Ścieżka względna `sqlite:///./workshop.db` nie działa. DBHub zwraca `unable to open database file`, dlatego użyłem `${workspaceFolder}`.
+
+Zrestartuj serwer `io.github.bytebase/dbhub` w VS Code, żeby wczytał nowy DSN.
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="task" data-tool-name="manage_todo_list"><details>
+<summary>Tool use: **manage_todo_list**</summary>
+
+Created 1 todo
+</details></tool-use>
+
+---
+
+_**User (2026-10-07 12:00:41Z)**_
+
+try now
+
+---
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="mcp_dbhub_mcp_ser_execute_sql"><details>
+<summary>Tool use: **mcp_dbhub_mcp_ser_execute_sql**</summary>
+
+Ran Execute SQL (sqlite) 
+
+**Input:**
+
+- sql: `SELECT COUNT(*) AS products FROM Product;`
+
+**Result:**
+
+```
+{
+  "success": true,
+  "data": {
+    "statements": [
+      {
+        "sql": "SELECT COUNT(*) AS products FROM Product",
+        "rows": [
+          {
+            "products": 12
+          }
+        ],
+        "count": 1
+      }
+    ],
+    "source_id": "default"
+  }
+}
+```
+</details></tool-use>
+
+_**Agent (copilot/claude-sonnet-5.5)**_
+
+Działa. Z DSN `sqlite:///${workspaceFolder}/workshop.db` zapytanie `SELECT COUNT(*) FROM Product` zwróciło 12 produktów, czyli tyle, ile powinno być w bazie startowej.
