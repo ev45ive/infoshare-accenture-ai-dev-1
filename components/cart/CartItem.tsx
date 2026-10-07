@@ -1,5 +1,6 @@
 'use client'
 import Image from 'next/image'
+import { getCartItemState } from '@/hooks/cart-limit'
 
 interface CartItemProps {
   item: {
@@ -8,6 +9,7 @@ interface CartItemProps {
     price: number
     quantity: number
     imageUrl: string
+    stock?: number
   }
   onRemove: (productId: string) => void
   onUpdateQty: (productId: string, qty: number) => void
@@ -16,9 +18,10 @@ interface CartItemProps {
 
 export function CartItem({ item, onRemove, onUpdateQty, formatPrice }: CartItemProps) {
   const subtotal = item.price * item.quantity
+  const state = getCartItemState(item)
 
   return (
-    <div className="flex items-center gap-4 py-4 border-b last:border-b-0">
+    <div className={`flex items-center gap-4 py-4 border-b last:border-b-0 ${state.unavailable ? 'opacity-50' : ''}`}>
       {item.imageUrl ? (
         <Image
           src={item.imageUrl}
@@ -35,12 +38,15 @@ export function CartItem({ item, onRemove, onUpdateQty, formatPrice }: CartItemP
       <div className="flex-1 min-w-0">
         <p className="font-bold truncate">{item.name}</p>
         <p className="text-sm text-gray-500">{formatPrice(item.price)} / szt.</p>
+        {state.message && (
+          <p role="alert" className="text-sm text-red-600">{state.message}</p>
+        )}
       </div>
 
       <div className="flex items-center gap-2 flex-shrink-0">
         <button
           onClick={() => onUpdateQty(item.productId, item.quantity - 1)}
-          disabled={item.quantity <= 1}
+          disabled={!state.canDecrease}
           className="w-8 h-8 flex items-center justify-center rounded border border-gray-300 disabled:opacity-40 hover:bg-gray-50"
           aria-label="Zmniejsz ilość"
         >
@@ -49,7 +55,7 @@ export function CartItem({ item, onRemove, onUpdateQty, formatPrice }: CartItemP
         <span className="w-6 text-center tabular-nums">{item.quantity}</span>
         <button
           onClick={() => onUpdateQty(item.productId, item.quantity + 1)}
-          disabled={item.quantity >= 10}
+          disabled={!state.canIncrease}
           className="w-8 h-8 flex items-center justify-center rounded border border-gray-300 disabled:opacity-40 hover:bg-gray-50"
           aria-label="Zwiększ ilość"
         >

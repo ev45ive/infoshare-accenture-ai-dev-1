@@ -1,0 +1,107 @@
+import { db } from '@/lib/db'
+import {
+  INVALID_QUANTITY_MESSAGE,
+  getItemLimit,
+  getLimitExceededMessage,
+  getMergedQuantity,
+  isValidQuantity,
+} from '@/lib/constants/cart'
+import type { CartCookieItem } from '@/types'
+
+// Bez 'use server': funkcje przyjmują userId, więc nie mogą być publicznymi akcjami.
+
+export const CART_LIMIT = 5 // BR-01: max 5 różnych produktów
+
+export type CartResult =
+  | { success: true; error?: undefined }
+  | { success?: undefined; error: string }
+
+export async function addToCart(userId: string, productId: string, quantity = 1): Promise<CartResult> {
+  if (!isValidQuantity(quantity)) return { error: INVALID_QUANTITY_MESSAGE }
+
+  const product = await db.product.findUnique({ where: { id: productId } })
+  if (!product) return { error: 'Produkt nie istnieje.' }
+
+  // KAT-05: produkt niedostępny
+  if (product.stock === 0) {
+    return { error: 'Produkt jest chwilowo niedostępny.' }
+  }
+
+  // Jeśli już w koszyku — zwiększ ilość
+  const existing = await db.cartItem.findUnique({
+    where: { userId_productId: { userId, productId } },
+  })
+
+  if ((existing?.quantity ?? 0) + quantity > getItemLimit(product.stock)) {
+    return { error: getLimitExceededMessage(product.stock) }
+  }
+
+  if (existing) {
+    await db.cartItem.update({
+      where: { id: existing.id },
+      data: { quantity: existing.quantity + quantity },
+    })
+    return { success: true }
+  }
+
+  // BR-01: limit 5 różnych produktów
+  const count = await db.cartItem.count({ where: { userId } })
+  if (count >= CART_LIMIT) {
+    return {
+      error: `Osiągnięto limit pozycji dla konta standardowego (${CART_LIMIT}). Usuń produkt lub przejdź na konto Premium.`,
+    }
+  }
+
+  await db.cartItem.create({ data: { userId, productId, quantity } })
+  return { success: true }
+}
+
+export async function removeFromCart(userId: string, productId: string): Promise<CartResult> {
+  await db.cartItem.deleteMany({ where: { userId, productId } })
+  return { success: true }
+}
+
+export async function updateCartQuantity(userId: string, productId: string, quantity: number): Promise<CartResult> {
+  if (quantity <= 0) return removeFromCart(userId, productId)
+  if (!isValidQuantity(quantity)) return { error: INVALID_QUANTITY_MESSAGE }
+
+  const existing = await db.cartItem.findUnique({
+    where: { userId_productId: { userId, productId } },
+    include: { product: true },
+  })
+  if (!existing) return { success: true }
+
+  // Zmniejszenie jest zawsze dozwolone, także z pozycji ponad limit.
+  if (quantity > existing.quantity && quantity > getItemLimit(existing.product.stock)) {
+    return { error: getLimitExceededMessage(existing.product.stock) }
+  }
+
+  await db.cartItem.update({ where: { id: existing.id }, data: { quantity } })
+  return { success: true }
+}
+
+// KOS-02: merge koszyka gościa po zalogowaniu
+export async function mergeCart(userId: string, items: CartCookieItem[]): Promise<CartResult> {
+  for (const item of items) {
+    if (!isValidQuantity(item.quantity)) continue
+
+    const product = await db.product.findUnique({ where: { id: item.productId } })
+    if (!product) continue // ignoruj nieistniejące produkty
+
+    const existing = await db.cartItem.findUnique({
+      where: { userId_productId: { userId, productId: item.productId } },
+    })
+    const quantity = getMergedQuantity(existing?.quantity, item.quantity, product.stock)
+
+    if (existing) {
+      await db.cartItem.update({ where: { id: existing.id }, data: { quantity } })
+    } else {
+      const count = await db.cartItem.count({ where: { userId } })
+      if (count >= CART_LIMIT) break // BR-01: cicha blokada
+
+      await db.cartItem.create({ data: { userId, productId: item.productId, quantity } })
+    }
+  }
+
+  return { success: true }
+}

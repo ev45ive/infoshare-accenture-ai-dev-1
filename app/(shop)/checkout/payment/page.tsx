@@ -7,6 +7,8 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { CardPaymentSchema, BlikSchema, type CardPaymentInput, type BlikInput } from '@/lib/validations/checkout'
 import { createOrder } from '@/lib/actions/checkout'
 import { useCart } from '@/hooks/useCart'
+import { getOrderErrorTitle } from '@/hooks/order-error'
+import { CART_MESSAGES } from '@/hooks/cart-messages'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -23,11 +25,12 @@ function getServerDeliverySnapshot(): undefined { return undefined }
 
 export default function PaymentPage() {
   const router = useRouter()
-  const { items, total, formatPrice } = useCart()
+  const { items, total, formatPrice, refresh } = useCart()
 
   const [selectedTab, setSelectedTab] = useState<PaymentTab>('CARD')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [paymentError, setPaymentError] = useState<string | null>(null)
+  const [paymentErrorTitle, setPaymentErrorTitle] = useState<string>(CART_MESSAGES.paymentErrorTitle)
   const deliveryRaw = useSyncExternalStore(subscribeDelivery, getDeliverySnapshot, getServerDeliverySnapshot)
   const deliveryMethod = useMemo<DeliveryMethod | null>(() => {
     if (!deliveryRaw) return null
@@ -103,9 +106,12 @@ export default function PaymentPage() {
         sessionStorage.removeItem('checkout_delivery')
         router.push(`/checkout/success?orderId=${result.orderId}`)
       } else {
+        setPaymentErrorTitle(getOrderErrorTitle(result))
         setPaymentError(result.error || 'Błąd płatności')
+        await refresh()
       }
     } catch {
+      setPaymentErrorTitle(CART_MESSAGES.paymentErrorTitle)
       setPaymentError('Wystąpił nieoczekiwany błąd. Spróbuj ponownie.')
     } finally {
       setIsSubmitting(false)
@@ -258,7 +264,7 @@ export default function PaymentPage() {
           {/* Error message */}
           {paymentError && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
-              <p className="font-medium">Błąd płatności</p>
+              <p className="font-medium">{paymentErrorTitle}</p>
               <p className="text-sm">{paymentError}</p>
             </div>
           )}
