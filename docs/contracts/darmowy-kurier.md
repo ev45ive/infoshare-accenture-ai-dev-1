@@ -29,3 +29,12 @@ Wspólne reguły dla backendu i frontendu. Zatwierdzone przez PO (Kamil). Źród
 - 30000 i 30001 gr: kurier 0 gr.
 - Spadek poniżej progu po zmianie koszyka: kurier wraca do 1499 gr.
 - Zamówienia sprzed zmiany: bez migracji; wartości zapisane w bazie wyświetlane bez zmian.
+
+## Kształt wyniku zamówienia
+
+`createOrder` (`lib/actions/checkout.ts`) i `placeOrder` (`lib/orders.ts`) zwracają `PlaceOrderResult` (`lib/orders.ts`):
+
+- sukces: `{ success: true, orderId, orderNumber }`,
+- błąd: `{ success: false, error, code?, fieldErrors?, unavailableProducts? }`.
+
+Dyskryminator to `result.success`. Sprawdzanie przez `'success' in result` nie rozróżnia już sukcesu od błędu.

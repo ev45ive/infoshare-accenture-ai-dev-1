@@ -23,11 +23,21 @@ export type CreateOrderParams = {
   deliveryMethod: DeliveryMethod
 }
 
-export async function placeOrder(user: SessionUser, params: CreateOrderParams) {
+export type PlaceOrderResult =
+  | { success: true; orderId: string; orderNumber: string }
+  | {
+      success: false
+      error: string
+      code?: string
+      fieldErrors?: Record<string, string[] | undefined>
+      unavailableProducts?: string[]
+    }
+
+export async function placeOrder(user: SessionUser, params: CreateOrderParams): Promise<PlaceOrderResult> {
   // Waliduj adres
   const addrParsed = AddressSchema.safeParse(params.address)
   if (!addrParsed.success) {
-    return { error: 'Nieprawidłowe dane adresu.', fieldErrors: addrParsed.error.flatten().fieldErrors }
+    return { success: false, error: 'Nieprawidłowe dane adresu.', fieldErrors: addrParsed.error.flatten().fieldErrors }
   }
 
   // Pobierz koszyk
@@ -36,19 +46,20 @@ export async function placeOrder(user: SessionUser, params: CreateOrderParams) {
     include: { product: true },
   })
 
-  if (cartItems.length === 0) return { error: 'Koszyk jest pusty.' }
+  if (cartItems.length === 0) return { success: false, error: 'Koszyk jest pusty.' }
 
   // KOS-08: sprawdź dostępność produktów
   const unavailable = cartItems.filter((i) => i.product.stock === 0)
   if (unavailable.length > 0) {
     return {
+      success: false,
       error: 'Niektóre produkty w koszyku stały się niedostępne.',
       unavailableProducts: unavailable.map((i) => i.product.name),
     }
   }
 
   const deliveryOption = DELIVERY_OPTIONS.find((o) => o.id === params.deliveryMethod)
-  if (!deliveryOption) return { error: 'Nieprawidłowa metoda dostawy.' }
+  if (!deliveryOption) return { success: false, error: 'Nieprawidłowa metoda dostawy.' }
 
   const { subtotal, deliveryCost, total } = calculateOrderTotals(
     cartItems.map((i) => ({ price: i.product.price, quantity: i.quantity })),
@@ -58,7 +69,7 @@ export async function placeOrder(user: SessionUser, params: CreateOrderParams) {
   // Przetwórz płatność (mock)
   const paymentResult = await processPayment(total)
   if (!paymentResult.success) {
-    return { error: paymentResult.message, code: paymentResult.code }
+    return { success: false, error: paymentResult.message, code: paymentResult.code }
   }
 
   // Zapisz adres
@@ -111,5 +122,5 @@ export async function placeOrder(user: SessionUser, params: CreateOrderParams) {
     `,
   })
 
-  return { success: true as const, orderId: order.id, orderNumber: order.orderNumber }
+  return { success: true, orderId: order.id, orderNumber: order.orderNumber }
 }

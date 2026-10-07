@@ -47,7 +47,7 @@ test('zamówienie kurierem >= 300 zł zapisuje deliveryCost 0 i wysyła mail z G
     { address: ADDRESS, paymentMethod: 'CARD', deliveryMethod: 'COURIER' },
   )
 
-  assert.ok('success' in result, 'zamówienie powinno się powieść')
+  assert.ok(result.success, 'zamówienie powinno się powieść')
   orderId = result.orderId
 
   const order = await db.order.findUniqueOrThrow({ where: { id: result.orderId } })
@@ -74,11 +74,29 @@ test('checkout z pustym koszykiem zwraca błąd, nie tworzy zamówienia ani mail
     { address: ADDRESS, paymentMethod: 'CARD', deliveryMethod: 'COURIER' },
   )
 
-  assert.ok('error' in result, 'checkout powinien zwrócić błąd')
+  assert.equal(result.success, false)
   assert.equal(result.error, 'Koszyk jest pusty.')
   assert.equal(await db.order.count({ where: { userId: user.id } }), ordersBefore)
   assert.equal(await db.address.count({ where: { userId: user.id } }), addressesBefore)
   assert.equal(await db.cartItem.count({ where: { userId: user.id } }), 0)
+  assert.equal(getEmailsTo(USER_EMAIL).length, 0)
+})
+
+test('błędny adres zwraca success false z fieldErrors, nie tworzy zamówienia, adresu ani maila', async () => {
+  const user = await db.user.findUniqueOrThrow({ where: { email: USER_EMAIL } })
+  clearEmails()
+  const ordersBefore = await db.order.count({ where: { userId: user.id } })
+  const addressesBefore = await db.address.count({ where: { userId: user.id } })
+
+  const result = await placeOrder(
+    { id: user.id, email: user.email, name: user.name },
+    { address: { ...ADDRESS, postalCode: '' }, paymentMethod: 'CARD', deliveryMethod: 'COURIER' },
+  )
+
+  assert.equal(result.success, false)
+  assert.ok(!result.success && result.fieldErrors?.postalCode?.length, 'błąd powinien dotyczyć kodu pocztowego')
+  assert.equal(await db.order.count({ where: { userId: user.id } }), ordersBefore)
+  assert.equal(await db.address.count({ where: { userId: user.id } }), addressesBefore)
   assert.equal(getEmailsTo(USER_EMAIL).length, 0)
 })
 

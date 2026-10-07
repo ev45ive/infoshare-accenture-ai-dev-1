@@ -2,14 +2,14 @@
 import { revalidatePath } from 'next/cache'
 import { db } from '@/lib/db'
 import { getSessionUser } from '@/lib/session'
-import { placeOrder, type CreateOrderParams } from '@/lib/orders'
+import { placeOrder, type CreateOrderParams, type PlaceOrderResult } from '@/lib/orders'
 
-export async function createOrder(params: CreateOrderParams) {
+export async function createOrder(params: CreateOrderParams): Promise<PlaceOrderResult> {
   const user = await getSessionUser()
-  if (!user) return { error: 'Zaloguj się, aby złożyć zamówienie.' }
+  if (!user) return { success: false, error: 'Zaloguj się, aby złożyć zamówienie.' }
 
   const result = await placeOrder(user, params)
-  if ('success' in result) revalidatePath('/account/orders')
+  if (result.success) revalidatePath('/account/orders')
   return result
 }
 
