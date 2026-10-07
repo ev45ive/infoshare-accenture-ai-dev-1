@@ -9,6 +9,7 @@ import {
   mergeGuestCart,
 } from '@/lib/actions/cart'
 import { formatPrice } from '@/lib/format'
+import { CART_MESSAGES } from './cart-messages'
 
 // Kształt pozycji koszyka — wspólny dla gościa i zalogowanego
 export type CartLineItem = {
@@ -105,7 +106,7 @@ export function useCart() {
     // Guest — limitacja BR-01 po stronie klienta
     const currentDistinct = new Set(guestItems.map((i) => i.productId))
     if (!currentDistinct.has(product.id) && currentDistinct.size >= 5) {
-      const msg = 'Osiągnięto limit pozycji dla konta standardowego (5). Usuń produkt lub przejdź na konto Premium.'
+      const msg = CART_MESSAGES.itemsLimitPremium
       setError(msg)
       return { error: msg }
     }

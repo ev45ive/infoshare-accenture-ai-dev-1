@@ -1,3 +1,5 @@
+import { CART_MESSAGES } from './cart-messages'
+
 const MAX_QUANTITY = 10
 
 // Stan nieznany (koszyk gościa) oznacza limit bez ograniczenia stanem.
@@ -20,8 +22,10 @@ export function isUnavailable(stock?: number): boolean {
 export type LimitCheck = { ok: true } | { ok: false; error: string }
 
 export function getLimitMessage(stock?: number): string {
-  const base = `Maksymalnie ${getItemLimit(stock)} szt. tego produktu`
-  return stock === undefined ? `${base}.` : `${base} (dostępne: ${stock}).`
+  const limit = getItemLimit(stock)
+  return stock === undefined
+    ? CART_MESSAGES.itemsLimit(limit)
+    : CART_MESSAGES.itemsLimitStock(limit, stock)
 }
 
 export function checkGuestAdd(

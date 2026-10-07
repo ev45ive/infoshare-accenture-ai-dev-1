@@ -73,7 +73,9 @@ Zachowania przypięte testami. Nie zmieniać w REFACTOR.
 ## Decyzje i sprzeczności
 - 2026-10-07: TODO utworzone, tryb TDD wybrany przez użytkownika.
 - 2026-10-07: odstępstwo od "jeden punkt naraz": powiązane punkty w rundach (patrz Rundy RGR), na prośbę użytkownika.
+- 2026-10-07: komunikaty w `hooks/cart-messages.ts` (`CART_MESSAGES`); runda C dodaje tam `unavailable`. Komunikat BR-01 przeniesiony z `useCart` na prośbę użytkownika (poza pinezkami, bez zmiany treści).
 
 ## Postęp
 - Runda A (pkt 1-4): RED / GREEN, commit: d14c05c
-- Runda B (pkt 5-7): RED / GREEN, commit: brak
+- Runda B (pkt 5-7): RED / GREEN, commit: caa90d8
+- Refaktor po rundzie B (komunikaty do `CART_MESSAGES`): REFACTOR, commit: brak
