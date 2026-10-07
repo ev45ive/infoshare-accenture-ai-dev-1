@@ -16,3 +16,28 @@ export function canDecrease(quantity: number): boolean {
 export function isUnavailable(stock?: number): boolean {
   return stock === 0
 }
+
+export type LimitCheck = { ok: true } | { ok: false; error: string }
+
+export function getLimitMessage(stock?: number): string {
+  const base = `Maksymalnie ${getItemLimit(stock)} szt. tego produktu`
+  return stock === undefined ? `${base}.` : `${base} (dostępne: ${stock}).`
+}
+
+export function checkGuestAdd(
+  items: { productId: string; quantity: number }[],
+  productId: string,
+  quantity: number,
+): LimitCheck {
+  const existing = items.find((i) => i.productId === productId)?.quantity ?? 0
+  return existing + quantity > getItemLimit()
+    ? { ok: false, error: getLimitMessage() }
+    : { ok: true }
+}
+
+// Zmniejszenie jest zawsze dozwolone, także dla pozycji ponad limit.
+export function checkGuestUpdate(currentQuantity: number, newQuantity: number): LimitCheck {
+  return newQuantity > currentQuantity && newQuantity > getItemLimit()
+    ? { ok: false, error: getLimitMessage() }
+    : { ok: true }
+}

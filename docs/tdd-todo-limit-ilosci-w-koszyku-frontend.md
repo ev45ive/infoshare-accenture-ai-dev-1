@@ -34,10 +34,10 @@ Kolejność = kolejność realizacji. Następny punkt oznacz `-> NEXT`.
 - [x] 2. `canIncrease(quantity, stock?)`: tak gdy `quantity < limit`; nie na limicie i ponad limitem | poziom: unit | dziś "+" zna tylko 10
 - [x] 3. `canDecrease(quantity)`: tak gdy `quantity > 1`, także dla pozycji ponad limit | poziom: unit | pinezka dla dzisiejszego "−"
 - [x] 4. `isUnavailable(stock?)`: `true` tylko dla stanu 0; brak stanu (gość) to `false` | poziom: unit
-- [ ] 5. `getLimitMessage(stock?)`: bez stanu "Maksymalnie 10 szt. tego produktu.", ze stanem "Maksymalnie 4 szt. tego produktu (dostępne: 4)." -> NEXT | poziom: unit | treść do zatwierdzenia przez Olę
-- [ ] 6. `checkGuestAdd(items, productId, qty)`: odrzuca gdy `existing + qty > 10`, zwraca komunikat; w limicie pozwala | poziom: unit | dziś store sumuje bez limitu
-- [ ] 7. `checkGuestUpdate(currentQty, newQty)`: odrzuca wzrost ponad 10; zmniejszenie dozwolone także z pozycji ponad limit | poziom: unit
-- [ ] 8. `mapCartRow(row)`: przenosi `product.stock` do pozycji zalogowanego (`stock` opcjonalne w `CartLineItem`) | poziom: unit | wymaga `stock` w `/api/cart` (jest wg kontraktu)
+- [x] 5. `getLimitMessage(stock?)`: bez stanu "Maksymalnie 10 szt. tego produktu.", ze stanem "Maksymalnie 4 szt. tego produktu (dostępne: 4)." | poziom: unit | treść do zatwierdzenia przez Olę
+- [x] 6. `checkGuestAdd(items, productId, qty)`: odrzuca gdy `existing + qty > 10`, zwraca komunikat; w limicie pozwala | poziom: unit | dziś store sumuje bez limitu
+- [x] 7. `checkGuestUpdate(currentQty, newQty)`: odrzuca wzrost ponad 10; zmniejszenie dozwolone także z pozycji ponad limit | poziom: unit
+- [ ] 8. `mapCartRow(row)`: przenosi `product.stock` do pozycji zalogowanego (`stock` opcjonalne w `CartLineItem`) -> NEXT | poziom: unit | wymaga `stock` w `/api/cart` (jest wg kontraktu)
 - [ ] 9. `useCart.addItem` / `updateQty` gościa używają punktów 6-7 i ustawiają `error` | poziom: e2e (brak testów hooków w repo) | ryzyko: bez RTL sprawdzamy w E2E
 - [ ] 10. `useCart.updateQty` zalogowanego pokazuje `{ error }` z serwera, a `/cart` go wyświetla | poziom: e2e | zależy od backendu
 - [ ] 11. `CartItem`: "+" używa `canIncrease` z `stock`; pozycja ze stanem 0 wyszarzona, komunikat "Ten produkt nie jest dostępny", "+" zablokowany, "Usuń" działa | poziom: unit (helper stanu pozycji) + e2e | zależy od `stock` z backendu
@@ -49,8 +49,8 @@ Kolejność = kolejność realizacji. Następny punkt oznacz `-> NEXT`.
 Powiązane punkty realizujemy razem w jednej rundzie (jeden RED z kilkoma testami, jeden GREEN, jeden commit). Punkty zależne od backendu lub E2E zostają osobno.
 
 - Runda A: 1-4 (limit, `canIncrease`, `canDecrease`, `isUnavailable`) — zrobiona
-- Runda B: 5-7 (komunikat, `checkGuestAdd`, `checkGuestUpdate`) -> NEXT
-- Runda C: 8, 11, 12 (`mapCartRow`, helper stanu pozycji, `CartItem`)
+- Runda B: 5-7 (komunikat, `checkGuestAdd`, `checkGuestUpdate`) — zrobiona
+- Runda C: 8, 11, 12 (`mapCartRow`, helper stanu pozycji, `CartItem`) -> NEXT
 - Runda D: 9, 10, 13 (podpięcie w `useCart`, błędy serwera, checkout)
 - Runda E: 14 (E2E gościa)
 
@@ -61,6 +61,10 @@ Zachowania przypięte testami. Nie zmieniać w REFACTOR.
 - "+" blokowany na limicie i powyżej, z uwzględnieniem stanu: `tests/unit/cart-limit.test.ts` (testy `canIncrease`)
 - "−" blokowany tylko przy ilości 1, także dla pozycji ponad limit: `tests/unit/cart-limit.test.ts` (testy `canDecrease`)
 - Niedostępny tylko przy stanie 0, brak stanu to nie niedostępność: `tests/unit/cart-limit.test.ts` (testy `isUnavailable`)
+- Komunikat limitu bez stanu i ze stanem: `tests/unit/cart-limit.test.ts` (testy `getLimitMessage`)
+- Dodanie gościa odrzucone przy `existing + qty > 10`, inne produkty nie wliczane: `tests/unit/cart-limit.test.ts` (testy `checkGuestAdd`)
+- Zmiana ilości gościa: wzrost ponad 10 odrzucony, zmniejszenie zawsze dozwolone: `tests/unit/cart-limit.test.ts` (testy `checkGuestUpdate`)
+
 ## Oczekiwania wobec backendu
 - `/api/cart` zwraca `product.stock` (kontrakt: już zwraca).
 - `addToDbCart`, `updateDbCartQuantity` zwracają `{ error }` z komunikatem zawierającym limit i dostępną ilość.
@@ -71,4 +75,5 @@ Zachowania przypięte testami. Nie zmieniać w REFACTOR.
 - 2026-10-07: odstępstwo od "jeden punkt naraz": powiązane punkty w rundach (patrz Rundy RGR), na prośbę użytkownika.
 
 ## Postęp
-- Runda A (pkt 1-4): RED / GREEN, commit: brak
+- Runda A (pkt 1-4): RED / GREEN, commit: d14c05c
+- Runda B (pkt 5-7): RED / GREEN, commit: brak
