@@ -38,12 +38,12 @@ Kolejność = kolejność realizacji. Następny punkt oznacz `-> NEXT`.
 - [x] 6. `checkGuestAdd(items, productId, qty)`: odrzuca gdy `existing + qty > 10`, zwraca komunikat; w limicie pozwala | poziom: unit | dziś store sumuje bez limitu
 - [x] 7. `checkGuestUpdate(currentQty, newQty)`: odrzuca wzrost ponad 10; zmniejszenie dozwolone także z pozycji ponad limit | poziom: unit
 - [x] 8. `mapCartRow(row)`: przenosi `product.stock` do pozycji zalogowanego (`stock` opcjonalne w `CartLineItem`) | poziom: unit | wymaga `stock` w `/api/cart` (jest wg kontraktu)
-- [ ] 9. `useCart.addItem` / `updateQty` gościa używają punktów 6-7 i ustawiają `error` -> NEXT | poziom: e2e (brak testów hooków w repo) | podpięte w GREEN rundy C, czeka na weryfikację E2E
-- [ ] 10. `useCart.updateQty` zalogowanego pokazuje `{ error }` z serwera, a `/cart` go wyświetla | poziom: e2e | podpięte w GREEN rundy C, zależy od backendu
+- [ ] 9. `useCart.addItem` / `updateQty` gościa używają punktów 6-7 i ustawiają `error` | poziom: e2e (brak testów hooków w repo) | podpięte w GREEN rundy C; E2E napisany (`tests/e2e/limit-ilosci.spec.ts`, test gościa), nie uruchomiony
+- [ ] 10. `useCart.updateQty` zalogowanego pokazuje `{ error }` z serwera, a `/cart` go wyświetla | poziom: e2e | podpięte w GREEN rundy C; backend gotowy; ścieżka `updateQty` z UI jest nieosiągalna przy "+" zablokowanym na limicie, E2E obejmuje tylko `addItem` zalogowanego (nie uruchomiony)
 - [x] 11. `CartItem`: "+" używa `canIncrease` z `stock`; pozycja ze stanem 0 wyszarzona, komunikat "Ten produkt nie jest dostępny", "+" zablokowany, "Usuń" działa | poziom: unit (helper stanu pozycji) + e2e | logika w unit, wyszarzenie czeka na E2E
 - [x] 12. Pozycja ponad limit w koszyku: "+" zablokowany, komunikat o limicie, "−" i "Usuń" działają | poziom: unit (helper) + e2e | logika w unit, wygląd czeka na E2E
-- [x] 13. Checkout: błąd z `placeOrder` (przycięcie, pusty koszyk) wyświetlany użytkownikowi | poziom: unit (tytuł błędu) + e2e | strona płatności pokazywała `error` już wcześniej; dodane: tytuł zależny od `code`, odświeżenie koszyka po odrzuceniu; wymaga backendu do pełnej weryfikacji
-- [ ] 14. E2E: gość dodaje 10 szt. i "+" jest zablokowany; kolejne dodanie z karty produktu pokazuje komunikat | poziom: e2e
+- [x] 13. Checkout: błąd z `placeOrder` (przycięcie, pusty koszyk) wyświetlany użytkownikowi | poziom: unit (tytuł błędu) + e2e | strona płatności pokazywała `error` już wcześniej; dodane: tytuł zależny od `code`, odświeżenie koszyka po odrzuceniu; backend gotowy; E2E checkoutu napisany (nie uruchomiony)
+- [ ] 14. E2E: gość dodaje 10 szt. i "+" jest zablokowany; kolejne dodanie z karty produktu pokazuje komunikat | poziom: e2e | napisany w `tests/e2e/limit-ilosci.spec.ts`, nie uruchomiony (`npm run test:e2e` startuje `scripts/dev.mjs`)
 
 ## Rundy RGR
 Powiązane punkty realizujemy razem w jednej rundzie (jeden RED z kilkoma testami, jeden GREEN, jeden commit). Punkty zależne od backendu lub E2E zostają osobno.
@@ -52,7 +52,7 @@ Powiązane punkty realizujemy razem w jednej rundzie (jeden RED z kilkoma testam
 - Runda B: 5-7 (komunikat, `checkGuestAdd`, `checkGuestUpdate`) — zrobiona
 - Runda C: 8, 11, 12 (`mapCartRow`, helper stanu pozycji, `CartItem`) — zrobiona (UI bez E2E)
 - Runda D: 9, 10, 13 (podpięcie w `useCart`, błędy serwera, checkout) — zrobiona (9, 10 i UI checkoutu bez E2E)
-- Runda E: 14 (E2E gościa) -> NEXT
+- Runda E: 14 (E2E) — testy napisane (plan frontendu, etapy 1-2), do uruchomienia przez użytkownika
 
 ## Pinezki (GREEN)
 Zachowania przypięte testami. Nie zmieniać w REFACTOR.
@@ -69,6 +69,7 @@ Zachowania przypięte testami. Nie zmieniać w REFACTOR.
 - Tytuł błędu zamówienia: z `code` "Błąd płatności", bez `code` "Nie udało się złożyć zamówienia": `tests/unit/order-error.test.ts` (testy `getOrderErrorTitle`)
 
 ## Oczekiwania wobec backendu
+Spełnione przez backend (plan backendu, etapy 1-6, kontrakt zaktualizowany 2026-10-07).
 - `/api/cart` zwraca `product.stock` (kontrakt: już zwraca).
 - `addToDbCart`, `updateDbCartQuantity` zwracają `{ error }` z komunikatem zawierającym limit i dostępną ilość.
 - `mergeGuestCart` przycina do limitu; `placeOrder` usuwa pozycje ze stanem 0 i przycina ponad limit z błędem.
@@ -83,4 +84,5 @@ Zachowania przypięte testami. Nie zmieniać w REFACTOR.
 - Runda B (pkt 5-7): RED / GREEN, commit: caa90d8
 - Refaktor po rundzie B (komunikaty do `CART_MESSAGES`): REFACTOR, commit: d520dd1
 - Runda C (pkt 8, 11, 12): RED / GREEN, commit: 05634c9. Wraz z GREEN podpięte `useCart` (pkt 9, 10) i `CartItem`, bez testu jednostkowego, weryfikacja w E2E.
-- Runda D (pkt 13): RED / GREEN, commit: brak. Tytuł błędu i odświeżenie koszyka na stronie płatności; rozróżnienie po `code` zapisane w kontrakcie.
+- Runda D (pkt 13): RED / GREEN, commit: a39f043. Tytuł błędu i odświeżenie koszyka na stronie płatności; rozróżnienie po `code` zapisane w kontrakcie.
+- Runda E (pkt 14, E2E punktów 9, 10, 11, 12, 13): napisane w `tests/e2e/limit-ilosci.spec.ts`, commity `a8ab72e`, `ec54011`. Nie uruchamiano.
