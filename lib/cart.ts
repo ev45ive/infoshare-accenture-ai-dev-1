@@ -3,6 +3,7 @@ import {
   INVALID_QUANTITY_MESSAGE,
   getItemLimit,
   getLimitExceededMessage,
+  getMergedQuantity,
   isValidQuantity,
 } from '@/lib/constants/cart'
 import type { CartCookieItem } from '@/types'
@@ -82,22 +83,23 @@ export async function updateCartQuantity(userId: string, productId: string, quan
 // KOS-02: merge koszyka gościa po zalogowaniu
 export async function mergeCart(userId: string, items: CartCookieItem[]): Promise<CartResult> {
   for (const item of items) {
+    if (!isValidQuantity(item.quantity)) continue
+
+    const product = await db.product.findUnique({ where: { id: item.productId } })
+    if (!product) continue // ignoruj nieistniejące produkty
+
     const existing = await db.cartItem.findUnique({
       where: { userId_productId: { userId, productId: item.productId } },
     })
+    const quantity = getMergedQuantity(existing?.quantity, item.quantity, product.stock)
 
     if (existing) {
-      await db.cartItem.update({
-        where: { id: existing.id },
-        data: { quantity: Math.max(existing.quantity, item.quantity) },
-      })
+      await db.cartItem.update({ where: { id: existing.id }, data: { quantity } })
     } else {
       const count = await db.cartItem.count({ where: { userId } })
       if (count >= CART_LIMIT) break // BR-01: cicha blokada
 
-      await db.cartItem.create({
-        data: { userId, productId: item.productId, quantity: item.quantity },
-      }).catch(() => null) // ignoruj nieistniejące produkty
+      await db.cartItem.create({ data: { userId, productId: item.productId, quantity } })
     }
   }
 

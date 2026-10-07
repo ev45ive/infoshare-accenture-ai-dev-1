@@ -1,6 +1,6 @@
 import { after, before, test } from 'node:test'
 import assert from 'node:assert/strict'
-import { addToCart, updateCartQuantity } from '../../lib/cart'
+import { addToCart, mergeCart, updateCartQuantity } from '../../lib/cart'
 import { db } from '../../lib/db'
 
 // Własny użytkownik, bo checkout.test.ts używa test@shopeasy.pl, a pliki testów działają równolegle.
@@ -150,4 +150,58 @@ test('ilość 0 przy zmianie usuwa pozycję', async () => {
 
   assert.equal(result.success, true)
   assert.equal(await cartQuantity(product.id), undefined)
+})
+
+// ─── mergeCart ──────────────────────────────────────────────────────
+
+test('merge przycina nową pozycję gościa do 10 szt.', async () => {
+  const product = await bySlug('powerbank-ultracharge-20000')
+  await setCart([])
+
+  const result = await mergeCart(userId, [{ productId: product.id, quantity: 15 }])
+
+  assert.equal(result.success, true)
+  assert.equal(await cartQuantity(product.id), 10)
+})
+
+test('merge przycina pozycję gościa do stanu magazynowego', async () => {
+  const product = await bySlug('ekspres-brewmaster-500')
+  await setCart([])
+
+  await mergeCart(userId, [{ productId: product.id, quantity: product.stock + 2 }])
+
+  assert.equal(await cartQuantity(product.id), product.stock)
+})
+
+test('merge zachowuje większą z ilości konta i gościa w limicie', async () => {
+  const product = await bySlug('powerbank-ultracharge-20000')
+  await setCart([{ productId: product.id, quantity: 3 }])
+
+  await mergeCart(userId, [{ productId: product.id, quantity: 6 }])
+
+  assert.equal(await cartQuantity(product.id), 6)
+})
+
+test('merge zapisuje pozycję produktu o stanie 0 bez przycinania do 0', async () => {
+  const product = await bySlug('sneakersy-urbanrun-pro')
+  assert.equal(product.stock, 0)
+  await setCart([])
+
+  await mergeCart(userId, [{ productId: product.id, quantity: 3 }])
+
+  assert.equal(await cartQuantity(product.id), 3)
+})
+
+test('merge pomija pozycje z nieprawidłową ilością i zapisuje pozostałe', async () => {
+  const powerbank = await bySlug('powerbank-ultracharge-20000')
+  const mouse = await bySlug('mysz-swiftclick-8k')
+  await setCart([])
+
+  await mergeCart(userId, [
+    { productId: powerbank.id, quantity: 1.5 },
+    { productId: mouse.id, quantity: 2 },
+  ])
+
+  assert.equal(await cartQuantity(powerbank.id), undefined)
+  assert.equal(await cartQuantity(mouse.id), 2)
 })
