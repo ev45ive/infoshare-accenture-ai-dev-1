@@ -1,6 +1,6 @@
 # Kontrakt: limit ilości produktu w koszyku
 
-Status: szkic do zatwierdzenia. Źródło reguł: odpowiedzi Oli w analizie zgłoszenia (2026-10-07).
+Status: backend zaimplementowany (2026-10-07), treści komunikatów do zatwierdzenia przez Olę. Źródło reguł: odpowiedzi Oli w analizie zgłoszenia (2026-10-07).
 
 ## Reguła
 
@@ -10,29 +10,33 @@ Status: szkic do zatwierdzenia. Źródło reguł: odpowiedzi Oli w analizie zgł
 - Zmniejszenie ilości i usunięcie pozycji są zawsze dozwolone, także dla pozycji ponad limit.
 - Pozycje już ponad limit nie są migrowane; blokowane jest dalsze zwiększanie i checkout.
 
-## Operacje serwerowe (`lib/actions/cart.ts`, `lib/orders.ts`)
+## Operacje serwerowe (`lib/actions/cart.ts`, `lib/cart.ts`, `lib/orders.ts`)
 
-Kształt błędu zachowuje dotychczasowy `{ error: string }`; do ustalenia w fazie backendu, czy dodać `code`.
+Kształt błędu zostaje `{ error: string }`, bez `code`. Akcje w `lib/actions/cart.ts` to cienkie opakowania (sesja + `revalidatePath`) wokół funkcji z `lib/cart.ts`, które przyjmują `userId`. Reguła limitu: `lib/constants/cart.ts`.
+
+Ilość niecałkowita lub `NaN` w `addToDbCart` i `updateDbCartQuantity` daje `{ error: 'Nieprawidłowa ilość.' }`. W `addToDbCart` ilość <= 0 też jest błędem.
 
 | Operacja | Zachowanie przy `nowa ilość > limit` | Wynik |
 |----------|--------------------------------------|-------|
 | `addToDbCart(productId, qty)` | Odrzuć całą operację (także gdy `existing + qty > limit`), koszyk bez zmian | `{ error }` |
-| `updateDbCartQuantity(productId, qty)` | Odrzuć, ilość bez zmian; `qty <= 0` nadal usuwa | `{ error }` |
-| `mergeGuestCart(items)` | Przytnij wynik (`max(konto, gość)` lub nowa pozycja) do limitu; nie zwracaj błędu | `{ success: true }` |
+| `updateDbCartQuantity(productId, qty)` | Odrzuć wzrost ponad limit, ilość bez zmian; zmniejszenie zawsze dozwolone; `qty <= 0` nadal usuwa | `{ error }` |
+| `mergeGuestCart(items)` | Przytnij wynik (`max(konto, gość)` lub nowa pozycja) do limitu; pozycje z nieprawidłową ilością i nieistniejące produkty pomiń; produkt o stanie 0 zapisz bez przycinania do 0 (tylko do 10); nie zwracaj błędu | `{ success: true }` |
 | `placeOrder` / `createOrder` | Patrz niżej | `PlaceOrderResult` |
 
 ### Checkout (`placeOrder`)
 
-1. Pozycje z `stock = 0`: usuń z koszyka konta i kontynuuj z pozostałymi (bez komunikatu o usunięciu).
+Kolejność potwierdzona w implementacji:
+
+1. Pozycje z `stock = 0`: usuń z koszyka konta i kontynuuj z pozostałymi (bez komunikatu o usunięciu). Dotychczasowy błąd KOS-08 znika.
 2. Jeśli po kroku 1 koszyk jest pusty: brak zamówienia, błąd „Koszyk jest pusty.”
-3. Jeśli jakakolwiek pozycja ma `quantity > min(10, stock)`: przytnij te pozycje do limitu w bazie, zwróć błąd, **nie twórz zamówienia**.
+3. Jeśli jakakolwiek pozycja ma `quantity > min(10, stock)`: przytnij te pozycje do limitu w bazie, zwróć błąd (`CHECKOUT_LIMIT_MESSAGE` w `lib/constants/cart.ts`), **nie twórz zamówienia**, nie wywołuj płatności ani maila.
 4. W przeciwnym razie zamówienie powstaje jak dotychczas.
 
-Kolejność kroków 1 i 3 do potwierdzenia w fazie backendu (wynik dla klienta ten sam, o ile oba błędy zachodzą osobno).
+`PlaceOrderResult.unavailableProducts` zostaje w typie dla zgodności, ale nie jest już wypełniane.
 
 ## Komunikat odrzucenia
 
-Zawiera limit i dostępną ilość, np. „Maksymalnie 10 szt. tego produktu (dostępne: 4).” Dokładna treść do zatwierdzenia przez Olę; w UI pokazywana bez zmian z odpowiedzi serwera.
+Zawiera limit i dostępną ilość: „Maksymalnie {min(10, stan)} szt. tego produktu (dostępne: {stan}).”, np. dla stanu 4: „Maksymalnie 4 szt. tego produktu (dostępne: 4).”, dla stanu 30: „Maksymalnie 10 szt. tego produktu (dostępne: 30).” Ta sama treść co we frontendzie (`hooks/cart-messages.ts`). Dokładna treść do zatwierdzenia przez Olę; w UI pokazywana bez zmian z odpowiedzi serwera.
 
 ## Dane dla frontendu
 
