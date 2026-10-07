@@ -78,13 +78,13 @@ Etapy 3, 4 i 5 mogą iść w dowolnej kolejności po 1 i 2. Proponowana kolejno�
 
 ## Postęp (stan na 2026-10-07)
 
-- [x] **1. Czysta reguła limitu** — `lib/constants/cart.ts`: `MAX_ITEM_QUANTITY`, `getItemLimit`, `isValidQuantity`, `INVALID_QUANTITY_MESSAGE`, `getLimitExceededMessage`, `getMergedQuantity`, `classifyCheckoutItems`. Testy `tests/unit/cart-rules.test.ts` (14). Commit: wpiszę przy etapie 2.
-- [ ] **2. Refaktor: `lib/cart.ts`** — nierozpoczęty.
+- [x] **1. Czysta reguła limitu** — `lib/constants/cart.ts`: `MAX_ITEM_QUANTITY`, `getItemLimit`, `isValidQuantity`, `INVALID_QUANTITY_MESSAGE`, `getLimitExceededMessage`, `getMergedQuantity`, `classifyCheckoutItems`. Testy `tests/unit/cart-rules.test.ts` (14). Commit `396c5ab` (WIP).
+- [x] **2. Refaktor: `lib/cart.ts`** — `addToCart`, `removeFromCart`, `updateCartQuantity`, `mergeCart` (przyjmują `userId`, typ `CartResult`, stała `CART_LIMIT`); `lib/actions/cart.ts` to cienkie opakowania (sesja + `revalidatePath`). Zachowanie bez zmian. Commit: wpiszę przy etapie 3.
 - [ ] **3. Limit przy dodaniu i zmianie ilości** — nierozpoczęty.
 - [ ] **4. Limit w merge** — nierozpoczęty.
 - [ ] **5. Limit w checkoucie** — nierozpoczęty.
 - [ ] **6. Dokumentacja i handoff** — nierozpoczęty.
 
-**Weryfikacja:** etap 1: `npm run typecheck`, `npm run lint` bez błędów, `npm run test:unit` 73/73 (było 59). Nie uruchamiano: `test:integration`.
+**Weryfikacja:** etap 1: `npm run typecheck`, `npm run lint` bez błędów, `npm run test:unit` 73/73 (było 59). Etap 2: typecheck, lint, `test:unit` 73/73 i `test:integration:direct` 6/6 bez zmian. Nie uruchamiano: `test:integration` (przez `scripts/workshop.mjs`, poza zakresem).
 
 **Tryb pracy:** użytkownik był niedostępny na bramkach, więc plan i testy z planu zostały przyjęte jako zatwierdzone, a etapy wykonuję kolejno z osobnym commitem WIP każdy.
